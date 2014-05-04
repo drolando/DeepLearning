@@ -238,7 +238,7 @@ class Regularizer(object):
         raise NotImplementedError
 
 
-DECAF_PREFIX = '_sparse'
+SPARSE_PREFIX = '_sparse'
 
 
 class Net(object):
@@ -293,7 +293,7 @@ class Net(object):
             if (not store_full and
                 (isinstance(layer, DataLayer) or 
                  isinstance(layer, LossLayer) or
-                 name.startswith(DECAF_PREFIX))):
+                 name.startswith(SPARSE_PREFIX))):
                 # We do not need to store these layers.
                 continue
             else:
@@ -381,7 +381,7 @@ class Net(object):
         """Make an output name for a layer, assuming that it has only one
         output.
         """
-        return '%s_%s_out' % (DECAF_PREFIX, layer.name)
+        return '%s_%s_out' % (SPARSE_PREFIX, layer.name)
 
     def add_layers(self, layers, needs=None, provides=None):
         """A wrapper that adds multiple layers as a chain to the graph. Each
@@ -496,10 +496,10 @@ class Net(object):
         # layer to avoid gradient overwriting.
         for blobname, count in self._need_count.iteritems():
             if count > 1:
-                split_provides = ['_'.join([DECAF_PREFIX, blobname, str(i)])
+                split_provides = ['_'.join([SPARSE_PREFIX, blobname, str(i)])
                                   for i in range(count)]
                 self.add_layer(
-                    SplitLayer(name='_'.join([DECAF_PREFIX, blobname, 'split'])),
+                    SplitLayer(name='_'.join([SPARSE_PREFIX, blobname, 'split'])),
                     needs=[blobname], provides=split_provides)
                 logging.debug('Insert SplitLayer from [%s] to %s', blobname, str(split_provides))
         # compute actual_needed
@@ -509,11 +509,11 @@ class Net(object):
             actual_needs = []
             for blobname in blobnames:
                 if (self._need_count[blobname] > 1 and 
-                    not layername.startswith(DECAF_PREFIX)):
+                    not layername.startswith(SPARSE_PREFIX)):
                     # instead of connecting it to the original blob, we connect
                     # it to the new splitted blob.
                     actual_needs.append(
-                        '_'.join([DECAF_PREFIX, blobname,
+                        '_'.join([SPARSE_PREFIX, blobname,
                                   str(temp_need_idx[blobname])]))
                     temp_need_idx[blobname] += 1
                 else:
