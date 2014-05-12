@@ -562,29 +562,26 @@ class Net(object):
                 self.blobs[key].mirror(arr)
         for _, layer, bottom, top in self._forward_order:
             if layer.group == group:
-                print layer.name
+                #print layer.name
                 #if layer.name == 'convolution1':
                 #   print "@@@@@@@ ", self._input_image, " ", top
                 #   layer.forward([self._input_image], top)
                 #else:
                 #   print "@@@@@@@ ", bottom, " ", top
                 layer.forward(bottom, top)
-        # the backward pass
-        print ""
-        print "backward"
-        print ""
+        """the backward pass"""
         for name, layer, bottom, top, propagate_down in self._backward_order:
             #print "@@@@@@@ backward ", layer.name
             #if layer.name == 'convolution1':
             #    bottom = [self._input_image]
             #print "@@@@@@@ ", bottom, " ", top
             if layer.group == group:
-                print layer.name
+                #print layer.name
                 old = Blob.blob_like(bottom[0])
                 old._data[:] = bottom[0]._data
                 layer_loss = layer.backward(bottom, top, propagate_down)
                 loss += layer_loss
-                print (bottom[0]._data == old._data).all()
+                #print (bottom[0]._data == old._data).all()
         return loss
     
     def forward_backward(self, previous_net = None):

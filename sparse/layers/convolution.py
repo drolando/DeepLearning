@@ -78,9 +78,9 @@ class ConvolutionLayer(base.Layer):
     
     def forward(self, bottom, top):
         """Runs the forward pass."""
-        print "---- ", self.name
+        #print "---- ", self.name
         bottom_data = bottom[0].data()
-        print "---- ", bottom_data.shape
+        #print "---- ", bottom_data.shape
         # bottom_data type: numpy.ndarray
         # bottom_data shape: (1, 256, 256, 3)
         if bottom_data.ndim != 4:
@@ -124,10 +124,10 @@ class ConvolutionLayer(base.Layer):
         # _stride: 2
         # (padded_data.shape[1] - self._ksize) / self._stride + 1: 256
         
-        print "-- ", self.name
-        print "-- ", col_data_num
-        print "-- ",  (padded_data.shape[1] - self._ksize) / self._stride + 1
-        print "-- ", padded_data.shape[3] * self._ksize * self._ksize
+        #print "-- ", self.name
+        #print "-- ", col_data_num
+        #print "-- ",  (padded_data.shape[1] - self._ksize) / self._stride + 1
+        #print "-- ", padded_data.shape[3] * self._ksize * self._ksize
         col_data = self._col.init_data(
             (col_data_num,
                 (padded_data.shape[1] - self._ksize) / self._stride + 1,
@@ -239,9 +239,11 @@ class ConvolutionLayer(base.Layer):
                 bottom_diff[:] = padded_diff[:,
                                              self._pad_size:-self._pad_size,
                                              self._pad_size:-self._pad_size]
+
         # finally, add the regularization term
         if self._reg is not None:
-            return self._reg.reg(self._kernels, bottom_data.shape[0])
+            #return self._reg.reg(self._kernels, bottom_data.shape[0])
+            return self._reg.reg(self._kernels)
         else:
             return 0.
 

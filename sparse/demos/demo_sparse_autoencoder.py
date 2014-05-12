@@ -10,9 +10,9 @@ and display the learned filters. The trained network (less the input and loss
 layers) is saved at sparse-autoencoder.decaf_net.
 """
 
-from decaf import base
-from decaf.util import smalldata, visualize
-from decaf.layers import core_layers, fillers, regularization
+from sparse import base
+from sparse.util import smalldata, visualize
+from sparse.layers import core_layers, fillers, regularization
 from decaf.opt import core_solvers
 import logging
 from matplotlib import pyplot
@@ -56,6 +56,10 @@ logging.info('*** Finished Patch Preparation ***')
 # Creating the decaf net for the autoencoder.
 #############################################
 
+'''
+    patches = (10000, 8, 8, 1)
+'''
+
 logging.info('*** Constructing the network ***')
 decaf_net = base.Net()
 # The data layer
@@ -88,6 +92,15 @@ decaf_net.add_layer(
             weight=3.,
             ratio=0.01),
     needs='sigmoid-out')
+'''
+    receives bottom: (10000, 8, 8, 1)
+'''
+decaf_net.add_layer(
+    core_layers.SparseFilteringLayer(
+        name='sparse-filter',
+    ),
+    needs='sigmoid-out',
+    provides='sparse-out')
 # The second inner product layer
 decaf_net.add_layer(
     core_layers.InnerProductLayer(
@@ -95,7 +108,7 @@ decaf_net.add_layer(
             num_output=PSIZE * PSIZE,
             filler=fillers.RandFiller(min=-INIT_SCALE, max=INIT_SCALE),
             reg=regularization.L2Regularizer(weight=0.00005)),
-    needs='sigmoid-out',
+    needs='sparse-out',
     provides='ip2-out')
 # The second sigmoid layer
 decaf_net.add_layer(

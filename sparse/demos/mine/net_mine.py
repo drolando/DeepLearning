@@ -4,6 +4,7 @@ from sparse.util import translator, transform
 from sparse.layers import core_layers, convolution, fillers, regularization
 from sparse.opt import core_solvers
 import numpy as np
+import copy
 
 _JEFFNET_FLIP = True
 INPUT_DIM = 227
@@ -65,7 +66,10 @@ def classify(image, center_only=False):
     return images
 
 lena = smalldata.lena()
-images = classify(lena)
+image1 = classify(lena)
+img = smalldata.get_image('cat.jpg')
+image2 = classify(img)
+images = [image1]
 '''
     now the image is (10, 227, 227, 3)
     10 sub-images
@@ -83,7 +87,7 @@ net = base.Net()
 net.add_layer(
     core_layers.NdarrayDataLayer(
         name='input',
-        sources=[images]
+        sources=images
     ),
     group=1,
     provides='data'
@@ -98,7 +102,8 @@ net.add_layer(
         ksize=11,
         stride=4,
         mode='same',
-        filler=fillers.GaussianRandFiller()
+        filler=fillers.GaussianRandFiller(),
+        reg=regularization.L1Regularizer(weight=1)
     ),
     group=1,
     needs='data',
@@ -132,6 +137,9 @@ net.add_layer(
     needs='conv1_neuron_cudanet_out',
     provides='pool1_cudanet_out'
 )
+'''
+    forward - (10, 28, 28, 96)
+'''
 net.add_layer(
     core_layers.LocalResponseNormalizeLayer(
         name='rnorm1',
@@ -144,16 +152,17 @@ net.add_layer(
     needs='pool1_cudanet_out',
     provides='rnorm1_cudanet_out'
 )
+
 #---------------------------------------------------------
 net.add_layer(
     core_layers.SparseFilteringLayer(
         name='sparse_filter_1'
     ),
     group=1,
-    needs='rnorm1_cudanet_out',
-    provides='sparse1'
+    needs='rnorm1_cudanet_out'
 )
 #---------------------------------------------------------
+"""
 '''
     2 groups by 128 kernels --> 256
     forward - (10, 28, 28, 256)
@@ -364,9 +373,17 @@ net.add_layer(
     needs='fc8_cudanet_out',
     provides='probs_cudanet_out'
 )
+"""
 net.finish()
+old_kernels = copy.deepcopy(net.layers['conv1']._kernels._data)
 visualize.draw_net_to_file(net, 'mine.png')
+
+print "@#@#@#@#", net._input_blobs
+print "@#@#@#@#", net._output_blobs
+
 net.group_forward_backward(1)
+
+
 
 print "###################################################################"
 print "  Calling solver"
@@ -378,5 +395,10 @@ solver = core_solvers.SGDSolver(
     lbfgs_args={'maxfun': MAXFUN, 'disp': 1},
     lr_policy='exp',
     base_lr=1,
-    gamma=0.5)
+    gamma=0.5,
+    max_iter=100,
+    disp=1)
+
+#solver = core_solvers.LBFGSSolver(
+#    lbfgs_args={'maxfun': MAXFUN, 'disp': 1})
 solver.solve(net)

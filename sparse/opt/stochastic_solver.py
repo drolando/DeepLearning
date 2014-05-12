@@ -7,6 +7,7 @@ import logging
 import numpy as np
 import os
 
+
 class StochasticSolver(base.Solver):
     """The Basic stochastic solver."""
     
@@ -92,8 +93,10 @@ class StochasticSolver(base.Solver):
 
     def solve(self, sparse_net, previous_net=None):
         """Solves the net."""
+        parser_logger = logging.getLogger("CSHEL_parserlogger");
+        parser_logger.setLevel(logging.DEBUG)
         # first, run a pass to initialize all the parameters.
-        logging.info('StochasticSolver: precomputing.')
+        parser_logger.info('StochasticSolver: precomputing.')
         self._iter_idx = 0
         self._sparse_net = sparse_net
         self._previous_net = previous_net
@@ -125,9 +128,9 @@ class StochasticSolver(base.Solver):
                 self._iter_idx % self._snapshot_interval == 0):
                 # perform snapshot.
                 self.snapshot()
-            if (self.spec.get('disp', 0) and 
-                self._iter_idx % self.spec['disp']):
-                logging.info('Iter %d, loss %f, elapsed %s', self._iter_idx,
+            if True or ((self.spec.get('disp', 0) and 
+                self._iter_idx % self.spec['disp'])):
+                parser_logger.info('Iter %d, loss %f, elapsed %s', self._iter_idx,
                              loss, timer.lap())
             self.iter_callback(loss)
             self._iter_idx += 1
