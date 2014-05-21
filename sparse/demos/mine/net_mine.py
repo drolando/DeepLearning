@@ -1,71 +1,16 @@
 from sparse import base
 from sparse.util import smalldata, visualize
-from sparse.util import translator, transform
 from sparse.layers import core_layers, convolution, fillers, regularization
 from sparse.opt import core_solvers
+from sparse.layers.data.dataset import ImageDataLayer
 import numpy as np
 import copy
-
-_JEFFNET_FLIP = True
-INPUT_DIM = 227
+from matplotlib import pyplot
 
 #images = np.load('/home/daniele/Documents/project/sparse-release/sparse/util/_data/images.npy')
-def oversample(image, center_only=False):
-    """Oversamples an image. Currently the indices are hard coded to the
-        4 corners and the center of the image, as well as their flipped ones,
-        a total of 10 images.
 
-        Input:
-        image: an image of size (256 x 256 x 3) and has data type uint8.
-        center_only: if True, only return the center image.
-        Output:
-        images: the output of size (10 x 227 x 227 x 3)
-    """
-    indices = [0, 256 - INPUT_DIM]
-    center = int(indices[1] / 2)
-    if center_only:
-        return np.ascontiguousarray(
-            image[np.newaxis, center:center + INPUT_DIM,
-            center:center + INPUT_DIM], dtype=np.float32)
-    else:
-        images = np.empty((10, INPUT_DIM, INPUT_DIM, 3),
-            dtype=np.float32)
-        curr = 0
-        for i in indices:
-            for j in indices:
-                images[curr] = image[i:i + INPUT_DIM,
-                    j:j + INPUT_DIM]
-                curr += 1
-        images[4] = image[center:center + INPUT_DIM,
-        center:center + INPUT_DIM]
-        # flipped version
-        images[5:] = images[:5, ::-1]
-        return images
 
-def classify(image, center_only=False):
-    """Classifies an input image.
-
-       Input:
-        image: an image of 3 channels and has data type uint8. Only the
-            center region will be used for classification.
-       Output:
-        scores: a numpy vector of size 1000 containing the
-            predicted scores for the 1000 classes.
-    """
-    # first, extract the 256x256 center.
-    image = transform.scale_and_extract(transform.as_rgb(image), 256)
-    # convert to [0,255] float32
-    image = image.astype(np.float32) * 255.
-    if _JEFFNET_FLIP:
-        # Flip the image if necessary, maintaining the c_contiguous order
-        image = image[::-1, :].copy()
-    # subtract the mean
-    #image -= self._data_mean
-    # oversample the images
-    images = oversample(image, center_only)
-    return images
-
-lena = smalldata.lena()
+"""lena = smalldata.lena()
 image1 = classify(lena)
 img = smalldata.get_image('cat.jpg')
 image2 = classify(img)
@@ -76,7 +21,7 @@ images = [image1]
     227 x 227 dimension
     3 rgb
 '''
-
+"""
 
 net = base.Net()
 '''
@@ -84,6 +29,7 @@ net = base.Net()
     sources - list of images (10, 227, 227, 3)
     forward - puts these images in Blobs and sends them to the next layer
 '''
+"""
 net.add_layer(
     core_layers.NdarrayDataLayer(
         name='input',
@@ -91,6 +37,15 @@ net.add_layer(
     ),
     group=1,
     provides='data'
+)
+"""
+net.add_layer(
+    ImageDataLayer(
+        name='input-layer',
+        train='../../util/_data/train.txt'
+    ),
+    group=1,
+    provides=['data', 'labels']
 )
 '''
     forward - (10, 57, 57, 96)
@@ -102,8 +57,7 @@ net.add_layer(
         ksize=11,
         stride=4,
         mode='same',
-        filler=fillers.GaussianRandFiller(),
-        reg=regularization.L1Regularizer(weight=1)
+        #filler=fillers.GaussianRandFiller(),
     ),
     group=1,
     needs='data',
@@ -152,14 +106,15 @@ net.add_layer(
     needs='pool1_cudanet_out',
     provides='rnorm1_cudanet_out'
 )
-
+"""
 #---------------------------------------------------------
 net.add_layer(
     core_layers.SparseFilteringLayer(
         name='sparse_filter_1'
     ),
     group=1,
-    needs='rnorm1_cudanet_out'
+    needs='rnorm1_cudanet_out',
+    provides='sparse_out_1'
 )
 #---------------------------------------------------------
 """
@@ -168,6 +123,20 @@ net.add_layer(
     forward - (10, 28, 28, 256)
 '''
 net.add_layer(
+    core_layers.ConvolutionLayer(
+        name='conv2',
+        num_kernels=256,
+        ksize=5,
+        stride=1,
+        mode='same',
+        #filler=fillers.GaussianRandFiller(),
+    ),
+    group=2,
+    needs='rnorm1_cudanet_out',
+    provides='conv2_cudanet_out'
+)
+"""
+net.add_layer(
     core_layers.GroupConvolutionLayer(
         name='conv2',
         stride=1,
@@ -175,12 +144,16 @@ net.add_layer(
         pad=2,
         ksize=5,
         group=2,
-        filler=fillers.GaussianRandFiller()
+        mode='same',
+        filler=fillers.GaussianRandFiller(),
+        reg=regularization.L1Regularizer(weight=4)
     ),
     #needs='rnorm1_cudanet_out',
-    needs='sparse1',
+    group=2,
+    needs='rnorm1_cudanet_out',
     provides='conv2_cudanet_out'
-)
+)"""
+
 '''
     forward - (10, 28, 28, 256)
 '''
@@ -189,6 +162,7 @@ net.add_layer(
         name='conv2_neuron',
         freeze=False
     ),
+    group=2,
     needs='conv2_cudanet_out',
     provides='conv2_neuron_cudanet_out'
 )
@@ -202,6 +176,7 @@ net.add_layer(
         psize=3,
         stride=2
     ),
+    group=2,
     needs='conv2_neuron_cudanet_out',
     provides='pool2_cudanet_out'
 )
@@ -216,9 +191,11 @@ net.add_layer(
         size=5,
         k=1
     ),
+    group=2,
     needs='pool2_cudanet_out',
     provides='rnorm2_cudanet_out'
 )
+#------ here values are still in order of ~50
 '''
     forward - (10, 14, 14, 384)
 '''
@@ -229,8 +206,9 @@ net.add_layer(
         ksize=3,
         stride=1,
         mode='same',
-        filler=fillers.GaussianRandFiller()
+        #filler=fillers.GaussianRandFiller(),
     ),
+    group=3,
     needs='rnorm2_cudanet_out',
     provides='conv3_cudanet_out'
 )
@@ -242,6 +220,7 @@ net.add_layer(
         name='conv3_neuron',
         freeze=False
     ),
+    group=3,
     needs='conv3_cudanet_out',
     provides='conv3_neuron_cudanet_out'
 )
@@ -249,6 +228,20 @@ net.add_layer(
     2 groups by 192 kernels --> 384
     forward - (10, 14, 14, 384)
 '''
+net.add_layer(
+    core_layers.ConvolutionLayer(
+        name='conv4',
+        num_kernels=384,
+        ksize=3,
+        stride=1,
+        mode='same',
+        #filler=fillers.GaussianRandFiller(),
+    ),
+    group=4,
+    needs='conv3_neuron_cudanet_out',
+    provides='conv4_cudanet_out'
+)
+"""
 net.add_layer(
     core_layers.GroupConvolutionLayer(
         name='conv4',
@@ -259,17 +252,33 @@ net.add_layer(
         group=2,
         filler=fillers.GaussianRandFiller()
     ),
+    group=4,
     needs='conv3_neuron_cudanet_out',
     provides='conv4_cudanet_out'
-)
+)"""
 net.add_layer(
     core_layers.ReLULayer(
         name='conv4_neuron',
         freeze=False
     ),
+    group=4,
     needs='conv4_cudanet_out',
     provides='conv4_neuron_cudanet_out'
 )
+net.add_layer(
+    core_layers.ConvolutionLayer(
+        name='conv5',
+        num_kernels=256,
+        ksize=3,
+        stride=1,
+        mode='same',
+        #filler=fillers.GaussianRandFiller(),
+    ),
+    group=5,
+    needs='conv4_neuron_cudanet_out',
+    provides='conv5_cudanet_out'
+)
+"""
 net.add_layer(
     core_layers.GroupConvolutionLayer(
         name='conv5',
@@ -277,16 +286,19 @@ net.add_layer(
         num_kernels=128,
         pad=1,
         ksize=3,
-        group=2
+        group=2,
+        filler=fillers.GaussianRandFiller()
     ),
+    group=5,
     needs='conv4_neuron_cudanet_out',
     provides='conv5_cudanet_out'
-)
+)"""
 net.add_layer(
     core_layers.ReLULayer(
         name='conv5_neuron',
         freeze=False
     ),
+    group=5,
     needs='conv5_cudanet_out',
     provides='conv5_neuron_cudanet_out'
 )
@@ -297,6 +309,7 @@ net.add_layer(
         psize=3,
         stride=2
     ),
+    group=5,
     needs='conv5_neuron_cudanet_out',
     provides='pool5_cudanet_out'
 )
@@ -304,6 +317,7 @@ net.add_layer(
     core_layers.FlattenLayer(
         name='fc6_flatten',
     ),
+    group=5,
     needs='pool5_cudanet_out',
     provides='_sparse_fc6_flatten_out'
 )
@@ -311,8 +325,10 @@ net.add_layer(
     core_layers.InnerProductLayer(
         name='fc6',
         num_output=4096,
-        has_bias=True
+        has_bias=True,
+        #filler=fillers.GaussianRandFiller(),
     ),
+    group=6,
     needs='_sparse_fc6_flatten_out',
     provides='fc6_cudanet_out'
 )
@@ -321,6 +337,7 @@ net.add_layer(
         name='fc6_neuron',
         freeze=False
     ),
+    group=6,
     needs='fc6_cudanet_out',
     provides='fc6_neuron_cudanet_out'
 )
@@ -329,6 +346,7 @@ net.add_layer(
         name='fc6dropout',
         ratio=0.500000,
     ),
+    group=6,
     needs='fc6_neuron_cudanet_out',
     provides='fc6dropout_cudanet_out'
 )
@@ -336,8 +354,10 @@ net.add_layer(
     core_layers.InnerProductLayer(
         name='fc7',
         num_output=4096,
-        has_bias=True
+        has_bias=True,
+        #filler=fillers.GaussianRandFiller(),
     ),
+    group=7,
     needs='fc6dropout_cudanet_out',
     provides='fc7_cudanet_out'
 )
@@ -346,6 +366,7 @@ net.add_layer(
         name='fc7_neuron',
         freeze=False
     ),
+    group=7,
     needs='fc7_cudanet_out',
     provides='fc7_neuron_cudanet_out'
 )
@@ -354,6 +375,7 @@ net.add_layer(
         name='fc7dropout',
         ratio=0.500000,
     ),
+    group=7,
     needs='fc7_neuron_cudanet_out',
     provides='fc7dropout_cudanet_out'
 )
@@ -361,8 +383,10 @@ net.add_layer(
     core_layers.InnerProductLayer(
         name='fc8',
         num_output=1000,
-        has_bias=True
+        has_bias=True,
+        #filler=fillers.GaussianRandFiller()
     ),
+    group=8,
     needs='fc7dropout_cudanet_out',
     provides='fc8_cudanet_out'
 )
@@ -370,10 +394,18 @@ net.add_layer(
     core_layers.SoftmaxLayer(
         name='probs',
     ),
+    group=8,
     needs='fc8_cudanet_out',
     provides='probs_cudanet_out'
 )
-"""
+net.add_layer(
+    core_layers.KLDivergenceLossLayer(
+        name='loss',
+    ),
+    group=8,
+    needs=['probs_cudanet_out', 'labels']
+)
+
 net.finish()
 old_kernels = copy.deepcopy(net.layers['conv1']._kernels._data)
 visualize.draw_net_to_file(net, 'mine.png')
@@ -402,3 +434,7 @@ solver = core_solvers.SGDSolver(
 #solver = core_solvers.LBFGSSolver(
 #    lbfgs_args={'maxfun': MAXFUN, 'disp': 1})
 solver.solve(net)
+
+filters = net.layers['conv1'].param()[0].data()
+_ = visualize.show_multiple(filters.T)
+pyplot.show()

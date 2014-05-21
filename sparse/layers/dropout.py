@@ -41,6 +41,7 @@ class DropoutLayer(base.Layer):
         upscale = 1. / self.spec['ratio']
         output[:] = features * mask
         output *= upscale
+        # negative values are still zero!
 
     def predict(self, bottom, top):
         """The dropout predict pass. Under our definition, it is simply a

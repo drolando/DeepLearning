@@ -36,7 +36,6 @@ class SoftmaxLayer(base.Layer):
         prob = top[0].data()
         bottom_diff = bottom[0].init_diff(setzero=False)
         bottom_diff[:] = top_diff
-        print top[0].data(), " ", prob
         cross_term = inner1d(top_diff, prob)
         bottom_diff -= cross_term[:, np.newaxis]
         bottom_diff *= prob

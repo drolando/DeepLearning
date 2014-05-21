@@ -56,6 +56,8 @@ class ConvolutionLayer(base.Layer):
         self._col = base.Blob()
         # set up the parameter
         self._kernels = base.Blob(filler=self.spec.get('filler', None))
+        self._base_kernels = base.Blob(filler=self.spec.get('filler', None))
+
         if self._has_bias:
             self._bias = base.Blob(filler=self.spec.get('bias_filler', None))
             self._param = [self._kernels, self._bias]
@@ -75,9 +77,12 @@ class ConvolutionLayer(base.Layer):
                 self._pad_size = int(self._ksize / 2)
             else:
                 raise ValueError('Unknown mode: %s' % self._mode)
+
     
     def forward(self, bottom, top):
         """Runs the forward pass."""
+        #if self._kernels.has_data():
+        #    assert (self._base_kernels.data() == self._kernels.data()).all()
         #print "---- ", self.name
         bottom_data = bottom[0].data()
         #print "---- ", bottom_data.shape
@@ -92,8 +97,13 @@ class ConvolutionLayer(base.Layer):
                 (self._ksize * self._ksize * bottom_data.shape[-1],
                  self._num_kernels),
                 bottom_data.dtype)
+            """ --- --- --- MINE --- --- --- --- --"""
+            self._base_kernels = base.Blob.blob_like(self._kernels)
+            self._base_kernels._data[:] = self._kernels._data
+            """ --- --- --- END --- --- --- --- --"""
             if self._has_bias:
                 self._bias.init_data((self._num_kernels,), bottom_data.dtype)
+
         # pad the data
         # pad_size: 7
         if self._pad_size == 0:
@@ -113,6 +123,8 @@ class ConvolutionLayer(base.Layer):
             col_data_num = bottom_data.shape[0]
         else:
             col_data_num = 1
+
+
         # col_data_num: 1
         ''' ----- ----- CONVOLUTION ----- ----- '''
         ''' self._col = Blob
@@ -120,14 +132,11 @@ class ConvolutionLayer(base.Layer):
             self._ksize = kernel_size
         '''
         # padded_data shape: (1, 270, 270, 3)
+        # padded_data: a lot of zeros but some dimension has real values
         # _ksize: 15
         # _stride: 2
         # (padded_data.shape[1] - self._ksize) / self._stride + 1: 256
         
-        #print "-- ", self.name
-        #print "-- ", col_data_num
-        #print "-- ",  (padded_data.shape[1] - self._ksize) / self._stride + 1
-        #print "-- ", padded_data.shape[3] * self._ksize * self._ksize
         col_data = self._col.init_data(
             (col_data_num,
                 (padded_data.shape[1] - self._ksize) / self._stride + 1,
@@ -143,7 +152,8 @@ class ConvolutionLayer(base.Layer):
             (bottom_data.shape[0], col_data.shape[1], col_data.shape[2],
              self._num_kernels), dtype=bottom_data.dtype, setdata=False)
         # top_data shape: (1, 256, 256, 1)
-    
+        
+        # self._large_mem = False
         # process data individually
         if self._large_mem:
             wrapper.im2col_forward(padded_data, col_data,
@@ -159,7 +169,7 @@ class ConvolutionLayer(base.Layer):
                     after calling im2col_forward my image matrix is decomposed in a new matrix
                     where each column is one of the kernels
                 '''
-                assert (old_pad == padded_data).all()
+                #assert (old_pad == padded_data).all()
                 # col_data shape: (1, 256 256, 675)
                 # col_data now is no more empty
                 # padded_data is still the same
@@ -182,6 +192,8 @@ class ConvolutionLayer(base.Layer):
         print "padded_data ", padded_data
         print "self._kernels ", self._kernels.data()
         '''
+        print "-------------kernels ----------------------"
+        print self._kernels._data.shape
         if self._has_bias:
             top_data += self._bias.data()
         return
@@ -226,6 +238,8 @@ class ConvolutionLayer(base.Layer):
                                        self._ksize, self._stride)
                 blasdot.dot_firstdims(col_data, top_diff[i],
                                      out=kernel_diff_buffer)
+
+
                 kernel_diff += kernel_diff_buffer
                 if propagate_down:
                     blasdot.dot_lastdim(top_diff[i], self._kernels.data().T,
@@ -239,12 +253,15 @@ class ConvolutionLayer(base.Layer):
                 bottom_diff[:] = padded_diff[:,
                                              self._pad_size:-self._pad_size,
                                              self._pad_size:-self._pad_size]
-
+        
         # finally, add the regularization term
-        if self._reg is not None:
+        if False:#self._reg is not None:
             #return self._reg.reg(self._kernels, bottom_data.shape[0])
-            return self._reg.reg(self._kernels)
+            tmp = self._reg.reg(self._kernels)
+            #assert (self._base_kernels.data() == self._kernels.data()).all()
+            return tmp
         else:
+            #assert (self._base_kernels.data() == self._kernels.data()).all()
             return 0.
 
     def __getstate__(self):
@@ -256,6 +273,7 @@ class ConvolutionLayer(base.Layer):
     def update(self):
         """updates the parameters."""
         # Only the inner product layer needs to be updated.
+        print "update -----------------------------------------------------"
         self._kernels.update()
         if self._has_bias:
             self._bias.update()

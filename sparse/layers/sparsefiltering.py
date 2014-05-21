@@ -31,6 +31,9 @@ class SparseFilteringLayer(base.Layer):
 
         if data.shape != (10000, 25):
             self._loss = 0.
+            if len(top) > 0:
+                output = top[0].init_data(data.shape, data.dtype, setdata=False)
+                output[:] = data
             return
         
         Fs = np.sqrt(data**2 + 1e-8)
@@ -65,6 +68,7 @@ class SparseFilteringLayer(base.Layer):
         #bottom[0]._data = top[0]._data
         #Fs = np.sqrt(data**2 + 1e-8)
 
+        # DeltaW --> Jacobian
         '''DeltaW = self.l2rowg(top[0]._NFs.T, Fhat, top[0]._L2Fn, np.ones(Fhat.shape))
         #np.ones returns a matrix of all 1
         DeltaW = self.l2rowg(data, top[0]._NFs, top[0]._L2Fs, DeltaW.T)

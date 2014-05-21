@@ -278,6 +278,12 @@ class Net(object):
         self._params = None
         self._finished = False
 
+        """----- --------- MINE -------- -------"""
+        self._max_group = -1
+        self._group_forward_order = {}
+        self._group_backward_order = {}
+        """----- --------- END -------- -------"""
+
     def save(self, filename, store_full=False):
         """Saving the necessary 
         
@@ -351,7 +357,10 @@ class Net(object):
             needs = [needs]
         if type(provides) is str:
             provides = [provides]
-        layer.group = group
+        """----- --------- MINE -------- -------"""
+        layer._net_group = group
+        self._max_group = max(self._max_group, group)
+        """----- --------- END -------- -------"""
         self._finished = False
         # Add the layer
         if layer.name in self.layers or layer.name in self.blobs:
@@ -455,6 +464,15 @@ class Net(object):
                 (n, self.layers[n],
                  [self.blobs[name] for name in self._actual_needs[n]],
                  [self.blobs[name] for name in self.provides[n]]))
+            """----- --------- MINE -------- -------"""
+            if self.layers[n]._net_group != -1:
+                if self.layers[n]._net_group not in self._group_forward_order:
+                    self._group_forward_order[self.layers[n]._net_group] = []
+                self._group_forward_order[self.layers[n]._net_group].append(
+                    (n, self.layers[n],
+                     [self.blobs[name] for name in self._actual_needs[n]],
+                     [self.blobs[name] for name in self.provides[n]]))
+            """----- --------- END -------- -------"""
         # logging.debug('Forward order details: %s', str(self._forward_order))
         self._backward_order = []
         for n in layerorder[::-1]:
@@ -464,6 +482,16 @@ class Net(object):
                      [self.blobs[name] for name in self._actual_needs[n]],
                      [self.blobs[name] for name in self.provides[n]],
                      self.graph.node[n]['propagate_down']))
+                """----- --------- MINE -------- -------"""
+                if self.layers[n]._net_group != -1:
+                    if self.layers[n]._net_group not in self._group_backward_order:
+                        self._group_backward_order[self.layers[n]._net_group] = []
+                    self._group_backward_order[self.layers[n]._net_group].append(
+                        (n, self.layers[n],
+                         [self.blobs[name] for name in self._actual_needs[n]],
+                         [self.blobs[name] for name in self.provides[n]],
+                         self.graph.node[n]['propagate_down']))
+                """----- --------- END -------- -------"""
         # logging.debug('Backward order details: %s', str(self._backward_order))
         # store all the parameters
         self._params = []
@@ -560,28 +588,26 @@ class Net(object):
             # If previous net is a dict, simply mirror all the data.
             for key, arr in previous_net.iteritems():
                 self.blobs[key].mirror(arr)
-        for _, layer, bottom, top in self._forward_order:
-            if layer.group == group:
-                #print layer.name
-                #if layer.name == 'convolution1':
-                #   print "@@@@@@@ ", self._input_image, " ", top
-                #   layer.forward([self._input_image], top)
-                #else:
-                #   print "@@@@@@@ ", bottom, " ", top
-                layer.forward(bottom, top)
-        """the backward pass"""
-        for name, layer, bottom, top, propagate_down in self._backward_order:
-            #print "@@@@@@@ backward ", layer.name
-            #if layer.name == 'convolution1':
-            #    bottom = [self._input_image]
-            #print "@@@@@@@ ", bottom, " ", top
-            if layer.group == group:
-                #print layer.name
-                old = Blob.blob_like(bottom[0])
-                old._data[:] = bottom[0]._data
-                layer_loss = layer.backward(bottom, top, propagate_down)
-                loss += layer_loss
-                #print (bottom[0]._data == old._data).all()
+
+        #Get the number of input images
+        first_layer = self._forward_order[0][1]
+        try:
+            num_images = first_layer.get_num_images()
+        except Exception:
+            raise ValueError("The first layer must be an ImageDataLayer.")
+
+        #Run forward_backward for each input image
+        for i in xrange(num_images):
+            for _, layer, bottom, top in self._forward_order:
+                if True:#layer._net_group == group:
+                    layer.forward(bottom, top)
+            """the backward pass"""
+            for name, layer, bottom, top, propagate_down in self._backward_order:
+                if True:#layer._net_group == group:
+                    old = Blob.blob_like(bottom[0])
+                    old._data[:] = bottom[0]._data
+                    layer_loss = layer.backward(bottom, top, propagate_down)
+                    loss += layer_loss
         return loss
     
     def forward_backward(self, previous_net = None):

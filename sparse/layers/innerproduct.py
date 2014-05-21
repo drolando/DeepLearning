@@ -54,6 +54,8 @@ class InnerProductLayer(base.Layer):
         blasdot.dot_lastdim(features, weight, out=output)
         if self._has_bias:
             output += self._bias.data()
+        # features has still negative values set to zero!
+        # output can have negative values because weights can be < 0
 
     def backward(self, bottom, top, propagate_down):
         """Computes the backward pass."""
@@ -72,6 +74,7 @@ class InnerProductLayer(base.Layer):
             bottom_diff = bottom[0].init_diff(setzero=False)
             blasdot.dot_lastdim(top_diff, self._weight.data().T,
                                 out=bottom_diff)
+
         if self._reg is not None:
             return self._reg.reg(self._weight)
         else:

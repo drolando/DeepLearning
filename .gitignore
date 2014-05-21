@@ -51,3 +51,8 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+
+# Run-time files
+*.dat
+*.png
+*.decafnet
