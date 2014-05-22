@@ -1,6 +1,6 @@
 from sparse import base
 from sparse.util import smalldata, visualize
-from sparse.layers import core_layers, convolution, fillers, regularization
+from sparse.layers import core_layers, convolution, fillers, regularization, sparsenet
 from sparse.opt import core_solvers
 from sparse.layers.data.dataset import ImageDataLayer
 import numpy as np
@@ -23,7 +23,7 @@ images = [image1]
 '''
 """
 
-net = base.Net()
+net = sparsenet.SparseNet()
 '''
     NdarrayDataLayer -- takes a bunch of data and then emits them as Blobs.
     sources - list of images (10, 227, 227, 3)
@@ -44,7 +44,7 @@ net.add_layer(
         name='input-layer',
         train='../../util/_data/train.txt'
     ),
-    group=1,
+    group=0,
     provides=['data', 'labels']
 )
 '''
@@ -410,12 +410,8 @@ net.finish()
 old_kernels = copy.deepcopy(net.layers['conv1']._kernels._data)
 visualize.draw_net_to_file(net, 'mine.png')
 
-print "@#@#@#@#", net._input_blobs
-print "@#@#@#@#", net._output_blobs
-
-net.group_forward_backward(1)
-
-
+net.sparse_filtering()
+net.save('sparse-unsupervised', store_full=True)
 
 print "###################################################################"
 print "  Calling solver"
@@ -424,12 +420,11 @@ print "###################################################################"
 
 MAXFUN = 500
 solver = core_solvers.SGDSolver(
-    lbfgs_args={'maxfun': MAXFUN, 'disp': 1},
     lr_policy='exp',
     base_lr=1,
     gamma=0.5,
     max_iter=100,
-    disp=1)
+    disp=10)
 
 #solver = core_solvers.LBFGSSolver(
 #    lbfgs_args={'maxfun': MAXFUN, 'disp': 1})

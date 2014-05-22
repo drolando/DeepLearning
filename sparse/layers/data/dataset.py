@@ -46,7 +46,7 @@ class ImageDataLayer(base.DataLayer):
             self._gen = self.image_gen()
             img_name = self._gen.next()
 
-        print img_name
+        #print img_name
         #load and resize the image
         img = smalldata.get_image(img_name)
         img_converted = self.convert(img)
