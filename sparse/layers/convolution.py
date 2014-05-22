@@ -81,11 +81,7 @@ class ConvolutionLayer(base.Layer):
     
     def forward(self, bottom, top):
         """Runs the forward pass."""
-        #if self._kernels.has_data():
-        #    assert (self._base_kernels.data() == self._kernels.data()).all()
-        #print "---- ", self.name
         bottom_data = bottom[0].data()
-        #print "---- ", bottom_data.shape
         # bottom_data type: numpy.ndarray
         # bottom_data shape: (1, 256, 256, 3)
         if bottom_data.ndim != 4:
@@ -153,7 +149,7 @@ class ConvolutionLayer(base.Layer):
              self._num_kernels), dtype=bottom_data.dtype, setdata=False)
         # top_data shape: (1, 256, 256, 1)
         
-        # self._large_mem = False
+        # self._large_mem --> False
         # process data individually
         if self._large_mem:
             wrapper.im2col_forward(padded_data, col_data,
@@ -162,18 +158,17 @@ class ConvolutionLayer(base.Layer):
         else:
             for i in range(bottom_data.shape[0]):
                 # call im2col individually
-                old_pad = padded_data.copy()
                 wrapper.im2col_forward(padded_data[i:i+1], col_data,
                                        self._ksize, self._stride)
                 '''
                     after calling im2col_forward my image matrix is decomposed in a new matrix
                     where each column is one of the kernels
                 '''
-                #assert (old_pad == padded_data).all()
                 # col_data shape: (1, 256 256, 675)
                 # col_data now is no more empty
                 # padded_data is still the same
                 # padded_data shape: (1, 270, 270, 3)
+                self.col_data = col_data
                 blasdot.dot_lastdim(col_data, self._kernels.data(),
                                     out=top_data[i])
                 '''
@@ -187,13 +182,6 @@ class ConvolutionLayer(base.Layer):
                     A and B should both be c-contiguous, otherwise the code will report
                     an error.
                 """
-        '''
-        print "col_data ", col_data
-        print "padded_data ", padded_data
-        print "self._kernels ", self._kernels.data()
-        '''
-        print "-------------kernels ----------------------"
-        print self._kernels._data.shape
         if self._has_bias:
             top_data += self._bias.data()
         return
@@ -255,13 +243,9 @@ class ConvolutionLayer(base.Layer):
                                              self._pad_size:-self._pad_size]
         
         # finally, add the regularization term
-        if False:#self._reg is not None:
-            #return self._reg.reg(self._kernels, bottom_data.shape[0])
-            tmp = self._reg.reg(self._kernels)
-            #assert (self._base_kernels.data() == self._kernels.data()).all()
-            return tmp
+        if self._reg is not None:
+            return self._reg.reg(self._kernels)
         else:
-            #assert (self._base_kernels.data() == self._kernels.data()).all()
             return 0.
 
     def __getstate__(self):
@@ -273,7 +257,6 @@ class ConvolutionLayer(base.Layer):
     def update(self):
         """updates the parameters."""
         # Only the inner product layer needs to be updated.
-        print "update -----------------------------------------------------"
         self._kernels.update()
         if self._has_bias:
             self._bias.update()

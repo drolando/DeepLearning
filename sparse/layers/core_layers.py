@@ -34,5 +34,3 @@ from sparse.layers.pooling import PoolingLayer
 from sparse.layers.relu import ReLULayer
 from sparse.layers.sigmoid import SigmoidLayer
 from sparse.layers.softmax import SoftmaxLayer
-
-from sparse.layers.sparsefiltering import SparseFilteringLayer

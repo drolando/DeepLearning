@@ -560,56 +560,7 @@ class Net(object):
                 self.graph.add_edge(layername, blobname)
         # Done creating graph!
         return        
-                        
-    def group_forward_backward(self, group, previous_net = None):
-        """Runs the forward and backward passes of the net.
-        """
-        # the forward pass. We will also accumulate the loss function.
-        if not self._finished:
-            raise SparseError('Call finish() before you use the network.')
-        if len(self._output_blobs):
-            # If the network has output blobs, it usually shouldn't be used
-            # to run forward-backward: such blobs won't be used and cause waste
-            # of computation. Maybe the user is missing a few loss layers? We
-            # will print the warning but still carry on.
-            logging.warning('Have multiple unused blobs in the net. Do you'
-                            ' actually mean running a forward backward pass?')
-        loss = 0.
-        # If there is a previous_net, we will run that first
-        if isinstance(previous_net, Net):
-            previous_blobs = previous_net.predict()
-            try:
-                for name in self._input_blobs:
-                    self.blobs[name].mirror(previous_blobs[name])
-            except KeyError as err:
-                raise SparseError('Cannot run forward_backward on a network'
-                                 ' with unspecified input blobs.', err)
-        elif isinstance(previous_net, dict):
-            # If previous net is a dict, simply mirror all the data.
-            for key, arr in previous_net.iteritems():
-                self.blobs[key].mirror(arr)
-
-        #Get the number of input images
-        first_layer = self._forward_order[0][1]
-        try:
-            num_images = first_layer.get_num_images()
-        except Exception:
-            raise ValueError("The first layer must be an ImageDataLayer.")
-
-        #Run forward_backward for each input image
-        for i in xrange(num_images):
-            for _, layer, bottom, top in self._forward_order:
-                if True:#layer._net_group == group:
-                    layer.forward(bottom, top)
-            """the backward pass"""
-            for name, layer, bottom, top, propagate_down in self._backward_order:
-                if True:#layer._net_group == group:
-                    old = Blob.blob_like(bottom[0])
-                    old._data[:] = bottom[0]._data
-                    layer_loss = layer.backward(bottom, top, propagate_down)
-                    loss += layer_loss
-        return loss
-    
+                            
     def forward_backward(self, previous_net = None):
         """Runs the forward and backward passes of the net.
         """
@@ -637,20 +588,11 @@ class Net(object):
             # If previous net is a dict, simply mirror all the data.
             for key, arr in previous_net.iteritems():
                 self.blobs[key].mirror(arr)
+        # the forward pass
         for _, layer, bottom, top in self._forward_order:
-            #print "@@@@@@@ forward ", layer.name
-            if layer.name == 'convolution1':
-                #print "@@@@@@@ ", self._input_image, " ", top
-                layer.forward([self._input_image], top)
-            else:
-                #print "@@@@@@@ ", bottom, " ", top
-                layer.forward(bottom, top)
+            layer.forward(bottom, top)
         # the backward pass
         for name, layer, bottom, top, propagate_down in self._backward_order:
-            #print "@@@@@@@ backward ", layer.name
-            if layer.name == 'convolution1':
-                bottom = [self._input_image]
-            #print "@@@@@@@ ", bottom, " ", top
             layer_loss = layer.backward(bottom, top, propagate_down)
             loss += layer_loss
         return loss

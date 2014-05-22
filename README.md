@@ -6,6 +6,9 @@ The research paper published by Stanford University can be found at: [http://cs.
 
 The source code will be published as soon as possible.
 
+Firstly install mkl intel library!
+
+## UBUNTU 14.04
 sudo apt-get install python-dev
 sudo apt-get install libfreetype6-dev
 sudo apt-get install python-scipy python-matplotlib ipython
@@ -15,3 +18,16 @@ sudo easy_install numexpr
 sudo apt-get install python-skimage
 sudo apt-get install python-pydot
 sudo apt-get install python-mpi python-mpi4py
+--->> sudo -E pip install --upgrade sklearn
+
+
+## MAC OS X 10.9
+sudo -E pip install --upgrade numpy
+sudo -E pip install --upgrade scipy
+sudo -E pip install --upgrade cython
+sudo -E pip install --upgrade scikit
+sudo -E pip install --upgrade matplotlib
+sudo -E pip install --upgrade pydot
+brew install graphviz
+sudo -E pip install --upgrade pillow
+sudo -E pip install --upgrade scikit-learn

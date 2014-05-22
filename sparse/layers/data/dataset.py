@@ -61,7 +61,6 @@ class ImageDataLayer(base.DataLayer):
 
     def image_gen(self):
         for img_name in self._image_files:
-            print "@@@@@@@@@@ ", img_name
             yield img_name
 
     def oversample(self, image, center_only=False):

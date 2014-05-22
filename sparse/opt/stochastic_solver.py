@@ -100,18 +100,18 @@ class StochasticSolver(base.Solver):
         self._iter_idx = 0
         self._sparse_net = sparse_net
         self._previous_net = previous_net
-        initial_loss = sparse_net.group_forward_backward(1, self._previous_net)
-        logging.info('StochasticSolver: initial loss: %f.', initial_loss)
-        logging.info('(Under mpirun, the given loss will just be an estimate'
+        initial_loss = sparse_net.forward_backward(self._previous_net)
+        parser_logger.info('StochasticSolver: initial loss: %f.', initial_loss)
+        parser_logger.info('(Under mpirun, the given loss will just be an estimate'
                      ' on the root node.)')
         self.initialize_status()
         # the main iteration
         timer = Timer()
-        logging.info('StochasticSolver: started.')
+        parser_logger.info('StochasticSolver: started.')
         for _ in range(self._max_iter):
             if mpi.SIZE > 1:
                 loss = mpi.COMM.allreduce(
-                    sparse_net.group_forward_backward(1, self._previous_net)) / mpi.SIZE
+                    sparse_net.forward_backward(self._previous_net)) / mpi.SIZE
                 # we need to broadcast and average the parameters
                 params = sparse_net.params()
                 for param in params:
@@ -120,7 +120,7 @@ class StochasticSolver(base.Solver):
                     mpi.COMM.Allreduce(diff_cache, diff)
                     diff /= mpi.SIZE
             else:
-                loss = sparse_net.group_forward_backward(1, self._previous_net)
+                loss = sparse_net.forward_backward(self._previous_net)
             self.compute_update_value()
             sparse_net.update()
             if (mpi.is_root() and 
@@ -128,8 +128,8 @@ class StochasticSolver(base.Solver):
                 self._iter_idx % self._snapshot_interval == 0):
                 # perform snapshot.
                 self.snapshot()
-            if True or ((self.spec.get('disp', 0) and 
-                self._iter_idx % self.spec['disp'])):
+            
+            if ((self.spec.get('disp', 0) and self._iter_idx % self.spec['disp'] == 0)):
                 parser_logger.info('Iter %d, loss %f, elapsed %s', self._iter_idx,
                              loss, timer.lap())
             self.iter_callback(loss)
@@ -138,7 +138,7 @@ class StochasticSolver(base.Solver):
         if mpi.is_root() and 'folder' in self.spec:
             self.snapshot(True)
         mpi.barrier()
-        logging.info('StochasticSolver: finished. Total time %s.',
+        parser_logger.info('StochasticSolver: finished. Total time %s.',
                      timer.total())
 
 
