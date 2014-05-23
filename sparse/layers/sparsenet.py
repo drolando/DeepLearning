@@ -1,20 +1,37 @@
 from sparse import base
-from sparse.layers import core_layers
 from sparse.layers.data import dataset
 from sparse.opt import core_solvers
-from sparse.layers import sparsefiltering
+from sparse.layers import sparsefiltering, core_layers
 from sparse.util.timer import Timer
 import numpy as np
 import logging
 from sklearn.feature_extraction import image
 
+from threading import Thread
+
 PATCHES_PER_IMAGE = 10
 RANDOM_SEED = 31
+
+class MyThread(Thread):
+    def __init__(self, val):
+        ''' Constructor. '''
+        Thread.__init__(self)
+        self.val = val
+ 
+ 
+    def run(self):
+        for i in range(1, self.val):
+            print('Value %d in thread %s' % (i, self.getName()))
+ 
+            # Sleep for random time between 1 ~ 3 second
+            secondsToSleep = randint(1, 5)
+            print('%s sleeping fo %d seconds...' % (self.getName(), secondsToSleep))
+            time.sleep(secondsToSleep)
+
 
 class SparseNet(base.Net):
 	def __init__(self, **kwargs):
 		base.Net.__init__(self, **kwargs)
-		self.count = 0
 		self.input_layer = None
 		self.conv_layers = []
 		self.logger = logging.getLogger("CSHEL_parserlogger")
@@ -26,6 +43,7 @@ class SparseNet(base.Net):
 		count = 0
 		for layer in self.conv_layers:
 			self.process_layer(layer, count)
+			return
 			count += 1
 
 
@@ -46,6 +64,7 @@ class SparseNet(base.Net):
 	def process_layer(self, layer, depth):
 		self.logger.info('Sparse Filtering: processing layer %s.'%(layer.name,))
 		kernel_size = None
+		self.count = 0
 
 		# extracts patches from all images
 		timer = Timer()
@@ -53,18 +72,19 @@ class SparseNet(base.Net):
 			input_data = self.feed_forward(depth)
 			if kernel_size == None:
 				kernel_size = (layer._ksize*layer._ksize*input_data.shape[-1], self.input_layer._num_images * PATCHES_PER_IMAGE)
-				self.patches = np.zeros(kernel_size)
+				self.patches = np.zeros(kernel_size, dtype=np.float32)
 			self.extract_patches(input_data, layer._ksize)
 		self.logger.info('Sparse Filtering: feed forward time %s.'%(timer.total()))
 
 		# normalizes patches
-		res = sparsefiltering.sparseFiltering(layer._num_kernels, self.patches)
-		print res.T.shape
+		res = sparsefiltering.sparseFiltering(layer._num_kernels, self.patches, 1000)
+		print "patches:: ", self.patches.shape
+		print "result:: ", res.T.shape
 		if not layer._kernels.has_data():
 			data = layer._kernels.init_data(
 				(kernel_size[0], layer._num_kernels),
-				res.dtype)
-			data[:] = res
+				np.float32)
+		data[:] = res.T
 
 
 	def extract_patches(self, data, ksize):

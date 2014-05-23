@@ -6,9 +6,7 @@ from sparse.layers.data.dataset import ImageDataLayer
 import numpy as np
 import copy
 from matplotlib import pyplot
-
-#images = np.load('/home/daniele/Documents/project/sparse-release/sparse/util/_data/images.npy')
-
+import sys
 
 """lena = smalldata.lena()
 image1 = classify(lena)
@@ -326,7 +324,7 @@ net.add_layer(
         name='fc6',
         num_output=4096,
         has_bias=True,
-        #filler=fillers.GaussianRandFiller(),
+        filler=fillers.GaussianRandFiller(),
     ),
     group=6,
     needs='_sparse_fc6_flatten_out',
@@ -355,7 +353,7 @@ net.add_layer(
         name='fc7',
         num_output=4096,
         has_bias=True,
-        #filler=fillers.GaussianRandFiller(),
+        filler=fillers.GaussianRandFiller(),
     ),
     group=7,
     needs='fc6dropout_cudanet_out',
@@ -382,9 +380,9 @@ net.add_layer(
 net.add_layer(
     core_layers.InnerProductLayer(
         name='fc8',
-        num_output=1000,
+        num_output=3,
         has_bias=True,
-        #filler=fillers.GaussianRandFiller()
+        filler=fillers.GaussianRandFiller()
     ),
     group=8,
     needs='fc7dropout_cudanet_out',
@@ -407,29 +405,28 @@ net.add_layer(
 )
 
 net.finish()
-old_kernels = copy.deepcopy(net.layers['conv1']._kernels._data)
 visualize.draw_net_to_file(net, 'mine.png')
 
-net.sparse_filtering()
-net.save('sparse-unsupervised', store_full=True)
+if '--train' in sys.argv[1:]:
+    if '--supervised-only' not in sys.argv[1:]:
+        net.sparse_filtering()
+        filters = net.layers['conv1']._kernels._data
+        _ = visualize.show_multiple(filters.T)
+        pyplot.show()
+        net.save('sparse-unsupervised', store_full=False)
 
-print "###################################################################"
-print "  Calling solver"
-print "###################################################################"
+    if '--unsupervised-only' not in sys.argv[1:]: 
+        #net.load_from('sparse-unsupervised')
 
+        print "###################################################################"
+        print "  Calling solver"
+        print "###################################################################"
 
-MAXFUN = 500
-solver = core_solvers.SGDSolver(
-    lr_policy='exp',
-    base_lr=1,
-    gamma=0.5,
-    max_iter=100,
-    disp=10)
+        solver = core_solvers.SGDSolver(
+            lr_policy='exp',
+            base_lr=1,
+            gamma=0.5,
+            max_iter=100,
+            disp=10)
 
-#solver = core_solvers.LBFGSSolver(
-#    lbfgs_args={'maxfun': MAXFUN, 'disp': 1})
-solver.solve(net)
-
-filters = net.layers['conv1'].param()[0].data()
-_ = visualize.show_multiple(filters.T)
-pyplot.show()
+        solver.solve(net)

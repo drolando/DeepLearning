@@ -22,6 +22,7 @@ class ImageDataLayer(base.DataLayer):
         base.DataLayer.__init__(self, **kwargs)
         self._image_files = []
         self._labels = {}
+        self._num_labels = 0
         #reads the input file
         with open(self.spec['train']) as f:
             content = f.readlines()
@@ -29,6 +30,7 @@ class ImageDataLayer(base.DataLayer):
                 image, label = row.split(" ")
                 self._image_files.append(image)
                 self._labels[image] = float(label)
+                self._num_labels = max(self._num_labels, int(label))
         
         self._gen = self.image_gen()
         self._num_images = len(self._image_files)
@@ -46,14 +48,15 @@ class ImageDataLayer(base.DataLayer):
             self._gen = self.image_gen()
             img_name = self._gen.next()
 
-        #print img_name
+        #print img_name, " ", self._labels[img_name]
         #load and resize the image
         img = smalldata.get_image(img_name)
         img_converted = self.convert(img)
         top_blob[0].mirror(img_converted)
 
         #creates the labels vector
-        label = [0.0 if (i+self._labels[img_name])%4!=0 else 1.0 for i in xrange(1000)]
+        label = [1.0 if i == self._labels[img_name] - 1 else 0.0 for i in xrange(self._num_labels)]
+
         labels = [label for i in xrange(10)]
         top_blob[1]._data[:] = labels
 
@@ -113,7 +116,7 @@ class ImageDataLayer(base.DataLayer):
             # Flip the image if necessary, maintaining the c_contiguous order
             image = image[::-1, :].copy()
         # subtract the mean
-        #image -= self._data_mean
+        image -= np.mean(image)
         # oversample the images
         images = self.oversample(image, center_only)
         return images
@@ -121,7 +124,7 @@ class ImageDataLayer(base.DataLayer):
 
     def forward(self, bottom, top):
         """Generates the data."""
-        top[1].init_data((10, 1000,), np.float32)
+        top[1].init_data((10, self._num_labels,), np.float32)
         #top    --> output
         #bottom --> should be empty
         if len(bottom) > 0:

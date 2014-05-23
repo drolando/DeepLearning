@@ -53,7 +53,10 @@ coverage.xml
 docs/_build/
 
 # Run-time files
-.dat
-.png
-.decafnet
-.o
+*.dat
+*.png
+*.jpg
+*.jpeg
+*.decafnet
+*.o
+.directory

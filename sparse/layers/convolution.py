@@ -97,8 +97,8 @@ class ConvolutionLayer(base.Layer):
             self._base_kernels = base.Blob.blob_like(self._kernels)
             self._base_kernels._data[:] = self._kernels._data
             """ --- --- --- END --- --- --- --- --"""
-            if self._has_bias:
-                self._bias.init_data((self._num_kernels,), bottom_data.dtype)
+        if self._has_bias and self._bias.data() is None:
+            self._bias.init_data((self._num_kernels,), bottom_data.dtype)
 
         # pad the data
         # pad_size: 7
