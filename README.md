@@ -6,9 +6,16 @@ The research paper published by Stanford University can be found at: [http://cs.
 
 The source code will be published as soon as possible.
 
-Firstly install mkl intel library!
+### RUN THE EXAMPLE
+```
+export PYTHONPATH='path/to/the/directory/where/you/downloaded/the/code'
+cd sparse/demos/mine
+python net_mine.py --train [--unsupervised-only | --supervised-only]
+```
 
 ### INSTALL
+Firstly install mkl intel library!
+
 #### UBUNTU 14.04
 
 ```Shell
