@@ -2,11 +2,11 @@
 """Efficient dot functions by calling the basic blas functions from scipy."""
 
 import numpy as np
-from scipy.linalg.blas import fblas
+from scipy.linalg import blas
 
 # pylint: disable=R0912
 def _gemm_f_contiguous(alpha, A, B, out):
-    '''A gemm function that uses scipy fblas functions, avoiding matrix copy
+    '''A gemm function that uses scipy blas functions, avoiding matrix copy
     when the input is transposed.
     
     The returned matrix is designed to be F_CONTIGUOUS.
@@ -20,9 +20,9 @@ def _gemm_f_contiguous(alpha, A, B, out):
     if A.dtype != B.dtype:
         raise TypeError('The data type of the matrices should be the same.')
     if A.dtype == np.float32:
-        gemm = fblas.sgemm
+        gemm = blas.sgemm
     elif A.dtype == np.float64:
-        gemm = fblas.dgemm
+        gemm = blas.dgemm
     else:
         raise TypeError('Unfit data type.')
     if A.shape[1] != B.shape[0]:

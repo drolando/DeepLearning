@@ -120,6 +120,7 @@ net.add_layer(
     2 groups by 128 kernels --> 256
     forward - (10, 28, 28, 256)
 '''
+"""
 net.add_layer(
     core_layers.ConvolutionLayer(
         name='conv2',
@@ -143,14 +144,13 @@ net.add_layer(
         ksize=5,
         group=2,
         mode='same',
-        filler=fillers.GaussianRandFiller(),
-        reg=regularization.L1Regularizer(weight=4)
+        #filler=fillers.GaussianRandFiller(),
+        #reg=regularization.L1Regularizer(weight=4)
     ),
-    #needs='rnorm1_cudanet_out',
     group=2,
     needs='rnorm1_cudanet_out',
     provides='conv2_cudanet_out'
-)"""
+)
 
 '''
     forward - (10, 28, 28, 256)
@@ -226,6 +226,8 @@ net.add_layer(
     2 groups by 192 kernels --> 384
     forward - (10, 14, 14, 384)
 '''
+
+"""
 net.add_layer(
     core_layers.ConvolutionLayer(
         name='conv4',
@@ -248,12 +250,12 @@ net.add_layer(
         pad=1,
         ksize=3,
         group=2,
-        filler=fillers.GaussianRandFiller()
+        #filler=fillers.GaussianRandFiller()
     ),
     group=4,
     needs='conv3_neuron_cudanet_out',
     provides='conv4_cudanet_out'
-)"""
+)
 net.add_layer(
     core_layers.ReLULayer(
         name='conv4_neuron',
@@ -263,6 +265,7 @@ net.add_layer(
     needs='conv4_cudanet_out',
     provides='conv4_neuron_cudanet_out'
 )
+"""
 net.add_layer(
     core_layers.ConvolutionLayer(
         name='conv5',
@@ -285,12 +288,12 @@ net.add_layer(
         pad=1,
         ksize=3,
         group=2,
-        filler=fillers.GaussianRandFiller()
+        #filler=fillers.GaussianRandFiller()
     ),
     group=5,
     needs='conv4_neuron_cudanet_out',
     provides='conv5_cudanet_out'
-)"""
+)
 net.add_layer(
     core_layers.ReLULayer(
         name='conv5_neuron',
@@ -324,7 +327,7 @@ net.add_layer(
         name='fc6',
         num_output=4096,
         has_bias=True,
-        filler=fillers.GaussianRandFiller(),
+        #filler=fillers.GaussianRandFiller(),
     ),
     group=6,
     needs='_sparse_fc6_flatten_out',
@@ -353,7 +356,7 @@ net.add_layer(
         name='fc7',
         num_output=4096,
         has_bias=True,
-        filler=fillers.GaussianRandFiller(),
+        #filler=fillers.GaussianRandFiller(),
     ),
     group=7,
     needs='fc6dropout_cudanet_out',
@@ -382,7 +385,7 @@ net.add_layer(
         name='fc8',
         num_output=3,
         has_bias=True,
-        filler=fillers.GaussianRandFiller()
+        #filler=fillers.GaussianRandFiller()
     ),
     group=8,
     needs='fc7dropout_cudanet_out',
@@ -410,13 +413,51 @@ visualize.draw_net_to_file(net, 'mine.png')
 if '--train' in sys.argv[1:]:
     if '--supervised-only' not in sys.argv[1:]:
         net.sparse_filtering()
-        filters = net.layers['conv1']._kernels._data
+        #feat = net.feature('conv1_cudanet_out')[0,::-1, :, ::3]
+        filters = net.layers['conv1'].param()[0].data()
         _ = visualize.show_multiple(filters.T)
+        pyplot.savefig('foo1.png')
+
+        filters = net.layers['conv2'].param()[0].data()
+        # make the right filter shape
+        filters = filters.T.reshape(128, 5, 5, 48)
+        filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(128*48, 5, 5)
+        _ = visualize.show_multiple(filters[:48*48], ncols=48)
+        pyplot.title('Second layer filters, each filter is shown as a row of channels.')
+        pyplot.savefig('foo2.png')
+
+        filters = net.layers['conv3'].param()[0].data()
+        _ = visualize.show_multiple(filters.T)
+        pyplot.savefig('foo3.png')
+
+        filters = net.layers['conv4'].param()[0].data()
+        # make the right filter shape
+        filters = filters.T.reshape(192, 3, 3, 384)
+        filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(192*384, 5, 5)
+        _ = visualize.show_multiple(filters[:48*48], ncols=48)
+        pyplot.title('Forth layer filters, each filter is shown as a row of channels.')
+        pyplot.savefig('foo4.png')
+
+        filters = net.layers['conv5'].param()[0].data()
+        filters = filters.T.reshape(128, 3, 3, 384)
+        filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(128*384, 5, 5)
+        _ = visualize.show_multiple(filters[:48*48], ncols=48)
+        pyplot.title('Forth layer filters, each filter is shown as a row of channels.')
+        pyplot.savefig('foo4.png')
+
+        net.save('sparse-unsupervised', store_full=False)
+        '''_ = visualize.show_channels(feat)
+        pyplot.title('Output')
         pyplot.show()
+        filters = net.layers['conv2'].param()[0].data()
+        filters = filters.T.reshape(256, 5, 5, 96)
+        filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(256*96, 5, 5)
+        _ = visualize.show_multiple(filters[:96*96], ncols=96)
+        pyplot.show()'''
         net.save('sparse-unsupervised', store_full=False)
 
     if '--unsupervised-only' not in sys.argv[1:]: 
-        #net.load_from('sparse-unsupervised')
+        net.load_from('sparse-unsupervised')
 
         print "###################################################################"
         print "  Calling solver"

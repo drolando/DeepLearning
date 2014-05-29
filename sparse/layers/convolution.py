@@ -4,6 +4,7 @@ from sparse import base
 from sparse.layers.cpp import wrapper
 from sparse.util import blasdot
 import numpy as np
+import random
 
 class ConvolutionLayer(base.Layer):
     """A layer that implements the convolution function."""
@@ -185,6 +186,64 @@ class ConvolutionLayer(base.Layer):
         if self._has_bias:
             top_data += self._bias.data()
         return
+
+    def extract_patches(self, image, sparse_net, max_number):
+        if self._has_bias and self._bias.data() is None:
+            self._bias.init_data((self._num_kernels,), image.dtype)
+
+        # pad the data
+        # pad_size: 7
+        if self._pad_size == 0:
+            padded_data = self._padded.mirror(bottom_data)
+        else:
+            padded_data = self._padded.init_data(
+                    (image.shape[0],
+                     image.shape[1] + self._pad_size * 2,
+                     image.shape[2] + self._pad_size * 2,
+                     image.shape[3]),
+                    image.dtype)
+            padded_data[:, self._pad_size:-self._pad_size,
+                        self._pad_size:-self._pad_size] = image
+        # initialize self._col
+        # _large_mem: False
+        if self._large_mem:
+            col_data_num = image.shape[0]
+        else:
+            col_data_num = 1
+
+        
+        col_data = self._col.init_data(
+            (col_data_num,
+                (padded_data.shape[1] - self._ksize) / self._stride + 1,
+                (padded_data.shape[2] - self._ksize) / self._stride + 1,
+                padded_data.shape[3] * self._ksize * self._ksize),
+            padded_data.dtype, setdata=False)
+        
+        coordinates = {}
+        count = 0
+        while True:
+            i = random.randint(0, image.shape[0]-1)
+            x = random.randint(0, col_data.shape[1]-1)
+            y = random.randint(0, col_data.shape[2]-1)
+            if i not in coordinates:
+                coordinates[i] = []
+            if (x, y) not in coordinates[i]:
+                coordinates[i].append((x, y))
+                count += 1
+                if count == max_number:
+                    break
+
+
+        for i in range(image.shape[0]):
+            if i in coordinates:
+                # call im2col individually
+                wrapper.im2col_forward(padded_data[i:i+1], col_data,
+                                   self._ksize, self._stride)
+
+                for x,y in coordinates[i]:
+                    sparse_net.add_patch(col_data[0][x][y])
+
+
 
     def backward(self, bottom, top, propagate_down):
         """Runs the backward pass."""

@@ -53,9 +53,10 @@ class ImageDataLayer(base.DataLayer):
         img = smalldata.get_image(img_name)
         img_converted = self.convert(img)
         top_blob[0].mirror(img_converted)
+        #print img_name
 
         #creates the labels vector
-        label = [1.0 if i == self._labels[img_name] - 1 else 0.0 for i in xrange(self._num_labels)]
+        label = [1.0 if i == self._labels[img_name] - 1 else 0.0 for i in xrange(3)]
 
         labels = [label for i in xrange(10)]
         top_blob[1]._data[:] = labels
@@ -124,7 +125,7 @@ class ImageDataLayer(base.DataLayer):
 
     def forward(self, bottom, top):
         """Generates the data."""
-        top[1].init_data((10, self._num_labels,), np.float32)
+        top[1].init_data((10, 3,), np.float32)
         #top    --> output
         #bottom --> should be empty
         if len(bottom) > 0:
