@@ -5,15 +5,16 @@ from sparse.layers import core_layers, sparsefiltering
 from sparse.util.timer import Timer
 import numpy as np
 import logging
-from sklearn.feature_extraction import image
+#from sklearn.feature_extraction import image
 
 #from scipy.io import loadmat
 #from sparse_filtering import SparseFiltering
 
 PATCHES_PER_IMAGE = 50
 RANDOM_SEED = 31
-MAX_ITER = 4000
-MAX_DEPTH = 0
+MAX_ITER = 100
+MAX_DEPTH = 10
+DISP = 50
 
 
 class SparseNet(base.Net):
@@ -29,9 +30,8 @@ class SparseNet(base.Net):
         self.logger.info('Sparse Filtering: started.')
         count = 0
         for layer in self.conv_layers:
-            self.process_layer(layer, count)
-            if count == 0:
-                return
+            if count in [0, 1]:#, 2, 3, 4, 5]:
+                self.process_layer(layer, count)
             count += 1
 
 
@@ -54,14 +54,26 @@ class SparseNet(base.Net):
         kernel_size = None
         self.count = 0
 
+        if type(layer) == core_layers.GroupConvolutionLayer:
+            ksize = layer._conv_layers[0]._ksize
+        else:
+            ksize = layer._ksize
+
         # extracts patches from all images
         timer = Timer()
         for i in xrange(self.input_layer._num_images):
             input_data = self.feed_forward(depth)
-            if kernel_size == None:
-                kernel_size = (layer._ksize*layer._ksize*input_data.shape[-1], self.input_layer._num_images * PATCHES_PER_IMAGE)
+            if type(layer) == core_layers.GroupConvolutionLayer:
+                input_channels = input_data.shape[-1]# / layer._group
+            else:
+                input_channels = input_data.shape[-1]
+
+            if kernel_size is None:
+                kernel_size = (ksize*ksize*input_channels, self.input_layer._num_images * PATCHES_PER_IMAGE)
                 self.patches = np.zeros(kernel_size, dtype=np.float32)
-            #self.extract_patches(input_data, layer._ksize)
+
+            self.last_img = input_data
+            assert not np.isnan(input_data.sum())
             layer.extract_patches(input_data, self, PATCHES_PER_IMAGE)
         self.logger.info('Sparse Filtering: feed forward time %s.'%(timer.total()))
 
@@ -69,17 +81,31 @@ class SparseNet(base.Net):
             data = loadmat('patches.mat')['data']
             self.patches -= self.patches.mean(axis=0)'''
 
+        '''if depth in [3, 4, 5]:
+            MAX_ITER = 400
+        else:
+            MAX_ITER = 1000'''
         # normalizes patches
-        res = sparsefiltering.sparseFiltering(layer._num_kernels, self.patches, MAX_ITER)
-        #self.sp = SparseFiltering(96, maxfun=1000, iprint=10)
-        #self.sp = self.sp.fit(self.patches.T)
-        #print "patches:: ", self.patches.shape
-        #print "result:: ", res.T.shape
-        if not layer._kernels.has_data():
-            data = layer._kernels.init_data(
-                (kernel_size[0], layer._num_kernels),
-                np.float32)
-        data[:] = res.T
+        res = sparsefiltering.sparseFiltering(layer._num_kernels, self.patches, max_iter=MAX_ITER, disp=DISP, net=self, layer=layer)
+
+        kernels = []
+        if type(layer) == core_layers.GroupConvolutionLayer:
+            for l in layer._conv_layers:
+                kernels.append(l._kernels)
+                if not l._kernels.has_data():
+                    data = l._kernels.init_data(
+                        (kernel_size[0], l._num_kernels),
+                        np.float32)
+        else:
+            kernels.append(layer._kernels)
+            if not layer._kernels.has_data():
+                data = layer._kernels.init_data(
+                    (kernel_size[0], layer._num_kernels),
+                    np.float32)
+
+        for k in kernels:
+            k._data[:] = res.T
+        #data[:] = res.T
         #data[:] = self.sp.w_.T
 
 

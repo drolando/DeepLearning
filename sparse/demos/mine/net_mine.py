@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use('Agg')
+
 from sparse import base
 from sparse.util import smalldata, visualize
 from sparse.layers import core_layers, convolution, fillers, regularization, sparsenet
@@ -7,6 +10,7 @@ import numpy as np
 import copy
 from matplotlib import pyplot
 import sys
+from sparse.util.tsne_python import tsne
 
 """lena = smalldata.lena()
 image1 = classify(lena)
@@ -120,7 +124,7 @@ net.add_layer(
     2 groups by 128 kernels --> 256
     forward - (10, 28, 28, 256)
 '''
-"""
+
 net.add_layer(
     core_layers.ConvolutionLayer(
         name='conv2',
@@ -151,7 +155,7 @@ net.add_layer(
     needs='rnorm1_cudanet_out',
     provides='conv2_cudanet_out'
 )
-
+"""
 '''
     forward - (10, 28, 28, 256)
 '''
@@ -227,7 +231,7 @@ net.add_layer(
     forward - (10, 14, 14, 384)
 '''
 
-"""
+
 net.add_layer(
     core_layers.ConvolutionLayer(
         name='conv4',
@@ -256,6 +260,7 @@ net.add_layer(
     needs='conv3_neuron_cudanet_out',
     provides='conv4_cudanet_out'
 )
+"""
 net.add_layer(
     core_layers.ReLULayer(
         name='conv4_neuron',
@@ -265,7 +270,7 @@ net.add_layer(
     needs='conv4_cudanet_out',
     provides='conv4_neuron_cudanet_out'
 )
-"""
+
 net.add_layer(
     core_layers.ConvolutionLayer(
         name='conv5',
@@ -294,6 +299,7 @@ net.add_layer(
     needs='conv4_neuron_cudanet_out',
     provides='conv5_cudanet_out'
 )
+"""
 net.add_layer(
     core_layers.ReLULayer(
         name='conv5_neuron',
@@ -411,14 +417,21 @@ net.finish()
 visualize.draw_net_to_file(net, 'mine.png')
 
 if '--train' in sys.argv[1:]:
-    if '--supervised-only' not in sys.argv[1:]:
+    if '--unsupervised' in sys.argv[1:] or '--all' in sys.argv[1:]:
+        #net.load_from("/home/daniele/Downloads/tmp/sparse-unsupervised")
+        #net.sparse_filtering()
+
+        #die
+
+
         net.sparse_filtering()
+        net.save('sparse-unsupervised', store_full=False)
         #feat = net.feature('conv1_cudanet_out')[0,::-1, :, ::3]
         filters = net.layers['conv1'].param()[0].data()
         _ = visualize.show_multiple(filters.T)
         pyplot.savefig('foo1.png')
 
-        filters = net.layers['conv2'].param()[0].data()
+        '''filters = net.layers['conv2'].param()[0].data()
         # make the right filter shape
         filters = filters.T.reshape(128, 5, 5, 48)
         filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(128*48, 5, 5)
@@ -445,7 +458,7 @@ if '--train' in sys.argv[1:]:
         pyplot.title('Forth layer filters, each filter is shown as a row of channels.')
         pyplot.savefig('foo4.png')
 
-        net.save('sparse-unsupervised', store_full=False)
+        net.save('sparse-unsupervised', store_full=False)'''
         '''_ = visualize.show_channels(feat)
         pyplot.title('Output')
         pyplot.show()
@@ -454,9 +467,9 @@ if '--train' in sys.argv[1:]:
         filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(256*96, 5, 5)
         _ = visualize.show_multiple(filters[:96*96], ncols=96)
         pyplot.show()'''
-        net.save('sparse-unsupervised', store_full=False)
+        #net.save('sparse-unsupervised', store_full=False)
 
-    if '--unsupervised-only' not in sys.argv[1:]: 
+    if '--supervised' in sys.argv[1:] or '--all' in sys.argv[1:]: 
         net.load_from('sparse-unsupervised')
 
         print "###################################################################"
@@ -471,3 +484,23 @@ if '--train' in sys.argv[1:]:
             disp=10)
 
         solver.solve(net)
+
+else:
+    #net.load_from("/home/daniele/Downloads/tmp/sparse-unsupervised")
+    net.load_from("sparse-unsupervised")
+    fp = open('feat.mat', 'w')
+
+    for i in range(200):
+        print "\nprocessing image %d"%(i)
+        top = [base.Blob(), base.Blob()]
+        #feat = net.predict(image=net.layers['input-layer'].forward([], top), output_blobs=['_sparse_fc6_flatten_out'])['_sparse_fc6_flatten_out']
+        feat = net.predict(output_blobs=['_sparse_fc6_flatten_out'])['_sparse_fc6_flatten_out']
+        #net.out_feat = net.predict(image=net.layers['input-layer'].forward([], top), 
+        #    output_blobs=['rnorm2_cudanet_out', 'conv3_neuron_cudanet_out', 'conv4_cudanet_out',
+        ##     'pool5_cudanet_out', '_sparse_fc6_flatten_out', 'rnorm1_cudanet_out'])
+        for val in feat[4]:
+            fp.write("%f "%(val + 1e-6))
+        fp.write('\n')
+    fp.close()
+    
+    tsne.main(mat='feat.mat')

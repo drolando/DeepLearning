@@ -122,13 +122,26 @@ class LocalResponseNormalizeLayer(base.Layer):
     def forward(self, bottom, top):
         """Computes the forward pass."""
         features = bottom[0].data()
+        assert not np.isnan(features.sum())
         output = top[0].init_data(features.shape, features.dtype)
         scale = self._scale.init_data(features.shape, features.dtype)
         if self._size > features.shape[-1]:
             raise base.SparseError('Incorrect size: should be smaller than '
                                   'the number of input channels.')
+        self.feat = features
+        self.scale = scale
         wrapper.lrn_forward(features, output, scale,
                             self._size, self._k, self._alpha, self._beta)
+        
+        """ ToFIX """
+        if np.isnan(output.sum()):
+            print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+            print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+            print "%%%%%%%%%%%%%%%%%%  SKIPPING NORMALIZATION  %%%%%%%%%%%%%%%%%%%%%%%"
+            print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+            print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+            output[:] = features
+        assert not np.isnan(output.sum())
     
     def backward(self, bottom, top, propagate_down):
         """Computes the backward pass."""

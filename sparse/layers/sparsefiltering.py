@@ -40,16 +40,18 @@ def l2rowg(X,Y,N,D):
     return (D.T/N - Y.T * (D*X).sum(axis=1) / N**2).T
 
 
-def sparseFiltering(N,X, max_iter=200):
+def sparseFiltering(N,X, max_iter=200, disp=0, net=None, layer=None):
     "N = # features, X = input data (examples in column)"
     optW = np.random.randn(N,X.shape[0])
-
+    # X >= 0 
+    net.X = X
     # Objective function!
     def objFun(W):
         # Feed forward
         W = W.reshape((N,X.shape[0]))
         F = W.dot(X)
-        Fs = np.sqrt(F**2 + 1e-8)
+        #Fs = np.sqrt(F**2 + 1e-8)
+        Fs = F + 1e-8
         NFs, L2Fs = l2row(Fs)
         Fhat, L2Fn = l2row(NFs.T)
         # Compute objective function
@@ -57,12 +59,20 @@ def sparseFiltering(N,X, max_iter=200):
         DeltaW = l2rowg(NFs.T, Fhat, L2Fn, np.ones(Fhat.shape))
         DeltaW = l2rowg(Fs, NFs, L2Fs, DeltaW.T)
         DeltaW = (DeltaW*(F/Fs)).dot(X.T)
+        if layer.name == "conv2":
+            net.X = X
+            net.Fhat = Fhat
+            net.DeltaW = DeltaW
+            net.W = W
+            print "W"
+            print W
         return Fhat.sum(), DeltaW.flatten()
 
     # Actual optimization
     w,g = objFun(optW)
-    res = minimize(objFun, optW, method='L-BFGS-B', jac = True, options = {'maxiter':max_iter, 'disp':50})
-    return res.x.reshape(N,X.shape[0])
+    res = minimize(objFun, optW, method='L-BFGS-B', jac = True, tol=1e-10, options = {'maxiter':max_iter, 'disp':disp})
+    res = res.x.reshape(N,X.shape[0])
+    return res
 
 
 def feedForwardSF(W,X):
@@ -71,4 +81,3 @@ def feedForwardSF(W,X):
     Fs = np.sqrt(F**2 + 1e-8)
     NFs = l2row(Fs)[0]
     return l2row(NFs.T)[0].T
-

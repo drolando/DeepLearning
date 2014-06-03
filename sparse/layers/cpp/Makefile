@@ -6,7 +6,8 @@ TARGET = libcpputil.so
 
 # If we are going to use MKL, we include additional flags
 MKL_FLAGS = -D DECAF_USE_MKL
-MKL_LINK_FLAGS = -lmkl_rt
+#MKL_LINK_FLAGS = -lmkl_rt
+MKL_LINK_FLAGS = -lmkl_core -lmkl_rt -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_avx -lmkl_vml_avx
 
 all: $(INPUT)
 	$(CC) -c $(CCFLAGS) $(INPUT)

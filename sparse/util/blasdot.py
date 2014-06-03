@@ -25,7 +25,7 @@ def dot(A, B, out=None):
     Raises:
         TypeError, if the type of matrices is wrong.
     '''
-    if out == None:
+    if out is None:
         out = np.empty((A.shape[0], B.shape[1]), A.dtype, B.dtype)
     # Numpy seems to have bugs dealing with the flags of 1x1 matrices. Thus,
     # if we encounter 1x1 matrices, we manually deal with the calculation.
@@ -45,7 +45,7 @@ def dot_lastdim(A, B, out=None):
     A and B should both be c-contiguous, otherwise the code will report
     an error.
     """
-    if out == None:
+    if out is None:
         out = np.empty(A.shape[:-1] + B.shape[1:], A.dtype)
     lda = A.size / A.shape[-1]
     dim = A.shape[-1]
