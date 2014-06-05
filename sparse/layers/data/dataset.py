@@ -11,7 +11,6 @@ import numpy as np
 _JEFFNET_FLIP = True
 INPUT_DIM = 227
 
-aaa_image = None
 
 class ImageDataLayer(base.DataLayer):
     """This layer takes a bunch of data as a dictionary, and then emits
@@ -20,11 +19,16 @@ class ImageDataLayer(base.DataLayer):
     
     def __init__(self, **kwargs):
         base.DataLayer.__init__(self, **kwargs)
+        self.input_file = self.spec['train']
+        self._image_files = None
+        
+
+    def load_input_file(self):
         self._image_files = []
         self._labels = {}
         self._num_labels = 0
         #reads the input file
-        with open(self.spec['train']) as f:
+        with open(self.input_file) as f:
             content = f.readlines()
             for row in content:
                 image, label = row.split(" ")
@@ -36,8 +40,8 @@ class ImageDataLayer(base.DataLayer):
         self._num_images = len(self._image_files)
 
     def get_num_images(self):
-        if self._num_images is None:
-            self._num_images = len(self._image_files)
+        if self._image_files is None:
+            self.load_input_file()
         return self._num_images
 
     def get_next_image(self, top_blob):
@@ -48,11 +52,11 @@ class ImageDataLayer(base.DataLayer):
             self._gen = self.image_gen()
             img_name = self._gen.next()
 
-        #print img_name, " ", self._labels[img_name]
         #load and resize the image
         img = smalldata.get_image(img_name)
         img_converted = self.convert(img)
         top_blob[0].mirror(img_converted)
+        assert not np.isnan(top_blob[0].data().sum())
         #print img_name
 
         #creates the labels vector
@@ -125,6 +129,9 @@ class ImageDataLayer(base.DataLayer):
 
     def forward(self, bottom, top):
         """Generates the data."""
+        if self._image_files is None:
+            self.load_input_file()
+
         top[1].init_data((10, 3,), np.float32)
         #top    --> output
         #bottom --> should be empty
@@ -132,3 +139,4 @@ class ImageDataLayer(base.DataLayer):
             raise ValueError("No input data required.")
 
         top[0], top[1] = self.get_next_image(top)
+

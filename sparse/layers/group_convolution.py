@@ -6,6 +6,7 @@ from sparse.layers import convolution
 class GroupConvolutionLayer(base.Layer):
     """A layer that implements the block group convolution function."""
 
+
     def __init__(self, **kwargs):
         """Initializes the convolution layer. Strictly, this is a correlation
         layer since the kernels are not reversed spatially as in a classical
@@ -38,6 +39,7 @@ class GroupConvolutionLayer(base.Layer):
             for i in range(self._group)]
         self._param = sum((layer.param() for layer in self._conv_layers), [])
         return
+
 
     def forward(self, bottom, top):
         """Runs the forward pass."""
@@ -72,6 +74,25 @@ class GroupConvolutionLayer(base.Layer):
             top_data[:, :, :, out_start:out_end] = top_sub_data
         return
 
+
+    def extract_patches(self, image, sparse_net, max_number):
+        patch = None
+        for conv in self._conv_layers:
+            conv.extract_patches(image, sparse_net, max_number / self._group)
+        '''patch = self._conv_layers[0].extract_patches(image, sparse_net, 1)
+        print patch
+        print sparse_net.patches.shape
+        print patch.shape
+        die
+        for i in range(self._group):
+            in_start = i * self._blocksize
+            in_end = in_start + self._blocksize
+            out_start = i * self._num_kernels
+            out_end = out_start + self._num_kernels
+            
+            top_data[:, :, :, out_start:out_end] = top_sub_data
+        '''
+
     def backward(self, bottom, top, propagate_down):
         """Runs the backward pass."""
         loss = 0.
@@ -98,11 +119,13 @@ class GroupConvolutionLayer(base.Layer):
                 bottom_diff[:, :, :, in_start:in_end] = bottom_sub_diff
         return loss
 
+
     def __getstate__(self):
         """When pickling, we will remove the intermediate data."""
         self._bottom_sub = [base.Blob() for _ in range(self._group)]
         self._top_sub = [base.Blob() for _ in range(self._group)]
         return self.__dict__
+
     
     def update(self):
         """updates the parameters."""

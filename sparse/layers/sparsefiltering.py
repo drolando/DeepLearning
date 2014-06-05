@@ -10,6 +10,8 @@ Requires numpy and scipy installed.
 import numpy as np
 from scipy.optimize import minimize
 
+TOLERANCE = 1e-20
+
 
 def l2row(X):
     """
@@ -43,15 +45,13 @@ def l2rowg(X,Y,N,D):
 def sparseFiltering(N,X, max_iter=200, disp=0, net=None, layer=None):
     "N = # features, X = input data (examples in column)"
     optW = np.random.randn(N,X.shape[0])
-    # X >= 0 
-    net.X = X
+
     # Objective function!
     def objFun(W):
         # Feed forward
         W = W.reshape((N,X.shape[0]))
         F = W.dot(X)
-        #Fs = np.sqrt(F**2 + 1e-8)
-        Fs = F + 1e-8
+        Fs = np.sqrt(F**2 + 1e-8)
         NFs, L2Fs = l2row(Fs)
         Fhat, L2Fn = l2row(NFs.T)
         # Compute objective function
@@ -59,19 +59,13 @@ def sparseFiltering(N,X, max_iter=200, disp=0, net=None, layer=None):
         DeltaW = l2rowg(NFs.T, Fhat, L2Fn, np.ones(Fhat.shape))
         DeltaW = l2rowg(Fs, NFs, L2Fs, DeltaW.T)
         DeltaW = (DeltaW*(F/Fs)).dot(X.T)
-        if layer.name == "conv2":
-            net.X = X
-            net.Fhat = Fhat
-            net.DeltaW = DeltaW
-            net.W = W
-            print "W"
-            print W
         return Fhat.sum(), DeltaW.flatten()
 
     # Actual optimization
     w,g = objFun(optW)
-    res = minimize(objFun, optW, method='L-BFGS-B', jac = True, tol=1e-10, options = {'maxiter':max_iter, 'disp':disp})
+    res = minimize(objFun, optW, method='L-BFGS-B', jac = True, tol=TOLERANCE, options = {'maxiter':max_iter, 'disp':disp})
     res = res.x.reshape(N,X.shape[0])
+    res = res / abs(res.max())
     return res
 
 

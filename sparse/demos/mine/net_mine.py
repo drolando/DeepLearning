@@ -3,27 +3,16 @@ matplotlib.use('Agg')
 
 from sparse import base
 from sparse.util import smalldata, visualize
-from sparse.layers import core_layers, convolution, fillers, regularization, sparsenet
+from sparse.layers import core_layers, convolution, fillers, regularization, sparsenet, sparsefiltering
 from sparse.opt import core_solvers
 from sparse.layers.data.dataset import ImageDataLayer
 import numpy as np
-import copy
 from matplotlib import pyplot
-import sys
+import sys, time, datetime
 from sparse.util.tsne_python import tsne
 
-"""lena = smalldata.lena()
-image1 = classify(lena)
-img = smalldata.get_image('cat.jpg')
-image2 = classify(img)
-images = [image1]
-'''
-    now the image is (10, 227, 227, 3)
-    10 sub-images
-    227 x 227 dimension
-    3 rgb
-'''
-"""
+NET_MODEL = 'unsupervised.sparsenet'
+
 
 net = sparsenet.SparseNet()
 '''
@@ -31,20 +20,11 @@ net = sparsenet.SparseNet()
     sources - list of images (10, 227, 227, 3)
     forward - puts these images in Blobs and sends them to the next layer
 '''
-"""
-net.add_layer(
-    core_layers.NdarrayDataLayer(
-        name='input',
-        sources=images
-    ),
-    group=1,
-    provides='data'
-)
-"""
 net.add_layer(
     ImageDataLayer(
         name='input-layer',
         train='../../util/_data/train.txt'
+        #train='../../util/_data/val.txt'
     ),
     group=0,
     provides=['data', 'labels']
@@ -59,7 +39,6 @@ net.add_layer(
         ksize=11,
         stride=4,
         mode='same',
-        #filler=fillers.GaussianRandFiller(),
     ),
     group=1,
     needs='data',
@@ -108,18 +87,7 @@ net.add_layer(
     needs='pool1_cudanet_out',
     provides='rnorm1_cudanet_out'
 )
-"""
-#---------------------------------------------------------
-net.add_layer(
-    core_layers.SparseFilteringLayer(
-        name='sparse_filter_1'
-    ),
-    group=1,
-    needs='rnorm1_cudanet_out',
-    provides='sparse_out_1'
-)
-#---------------------------------------------------------
-"""
+
 '''
     2 groups by 128 kernels --> 256
     forward - (10, 28, 28, 256)
@@ -132,30 +100,11 @@ net.add_layer(
         ksize=5,
         stride=1,
         mode='same',
-        #filler=fillers.GaussianRandFiller(),
     ),
     group=2,
     needs='rnorm1_cudanet_out',
     provides='conv2_cudanet_out'
 )
-"""
-net.add_layer(
-    core_layers.GroupConvolutionLayer(
-        name='conv2',
-        stride=1,
-        num_kernels=128,
-        pad=2,
-        ksize=5,
-        group=2,
-        mode='same',
-        #filler=fillers.GaussianRandFiller(),
-        #reg=regularization.L1Regularizer(weight=4)
-    ),
-    group=2,
-    needs='rnorm1_cudanet_out',
-    provides='conv2_cudanet_out'
-)
-"""
 '''
     forward - (10, 28, 28, 256)
 '''
@@ -197,7 +146,6 @@ net.add_layer(
     needs='pool2_cudanet_out',
     provides='rnorm2_cudanet_out'
 )
-#------ here values are still in order of ~50
 '''
     forward - (10, 14, 14, 384)
 '''
@@ -208,7 +156,6 @@ net.add_layer(
         ksize=3,
         stride=1,
         mode='same',
-        #filler=fillers.GaussianRandFiller(),
     ),
     group=3,
     needs='rnorm2_cudanet_out',
@@ -239,28 +186,11 @@ net.add_layer(
         ksize=3,
         stride=1,
         mode='same',
-        #filler=fillers.GaussianRandFiller(),
     ),
     group=4,
     needs='conv3_neuron_cudanet_out',
     provides='conv4_cudanet_out'
 )
-"""
-net.add_layer(
-    core_layers.GroupConvolutionLayer(
-        name='conv4',
-        stride=1,
-        num_kernels=192,
-        pad=1,
-        ksize=3,
-        group=2,
-        #filler=fillers.GaussianRandFiller()
-    ),
-    group=4,
-    needs='conv3_neuron_cudanet_out',
-    provides='conv4_cudanet_out'
-)
-"""
 net.add_layer(
     core_layers.ReLULayer(
         name='conv4_neuron',
@@ -278,28 +208,11 @@ net.add_layer(
         ksize=3,
         stride=1,
         mode='same',
-        #filler=fillers.GaussianRandFiller(),
     ),
     group=5,
     needs='conv4_neuron_cudanet_out',
     provides='conv5_cudanet_out'
 )
-"""
-net.add_layer(
-    core_layers.GroupConvolutionLayer(
-        name='conv5',
-        stride=1,
-        num_kernels=128,
-        pad=1,
-        ksize=3,
-        group=2,
-        #filler=fillers.GaussianRandFiller()
-    ),
-    group=5,
-    needs='conv4_neuron_cudanet_out',
-    provides='conv5_cudanet_out'
-)
-"""
 net.add_layer(
     core_layers.ReLULayer(
         name='conv5_neuron',
@@ -333,7 +246,6 @@ net.add_layer(
         name='fc6',
         num_output=4096,
         has_bias=True,
-        #filler=fillers.GaussianRandFiller(),
     ),
     group=6,
     needs='_sparse_fc6_flatten_out',
@@ -362,7 +274,6 @@ net.add_layer(
         name='fc7',
         num_output=4096,
         has_bias=True,
-        #filler=fillers.GaussianRandFiller(),
     ),
     group=7,
     needs='fc6dropout_cudanet_out',
@@ -389,9 +300,8 @@ net.add_layer(
 net.add_layer(
     core_layers.InnerProductLayer(
         name='fc8',
-        num_output=3,
+        num_output=4,
         has_bias=True,
-        #filler=fillers.GaussianRandFiller()
     ),
     group=8,
     needs='fc7dropout_cudanet_out',
@@ -414,63 +324,42 @@ net.add_layer(
 )
 
 net.finish()
-visualize.draw_net_to_file(net, 'mine.png')
+visualize.draw_net_to_file(net, 'network.png')
+
+if '--input' in sys.argv[1:]:
+    net.layers['input-layer'].input_file = sys.argv[sys.argv.index('--input') + 1]
 
 if '--train' in sys.argv[1:]:
     if '--unsupervised' in sys.argv[1:] or '--all' in sys.argv[1:]:
-        #net.load_from("/home/daniele/Downloads/tmp/sparse-unsupervised")
-        #net.sparse_filtering()
+        if '--continue' in sys.argv[1:]:
+            net.load_from(NET_MODEL)
 
-        #die
-
-
+        start = time.time()
         net.sparse_filtering()
-        net.save('sparse-unsupervised', store_full=False)
-        #feat = net.feature('conv1_cudanet_out')[0,::-1, :, ::3]
+        net.save(NET_MODEL, store_full=False)
         filters = net.layers['conv1'].param()[0].data()
         _ = visualize.show_multiple(filters.T)
-        pyplot.savefig('foo1.png')
+        pyplot.savefig('features.png')
+        end = time.time()
 
-        '''filters = net.layers['conv2'].param()[0].data()
-        # make the right filter shape
-        filters = filters.T.reshape(128, 5, 5, 48)
-        filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(128*48, 5, 5)
-        _ = visualize.show_multiple(filters[:48*48], ncols=48)
-        pyplot.title('Second layer filters, each filter is shown as a row of channels.')
-        pyplot.savefig('foo2.png')
+        fp = open('net.params', 'a')
+        fp.write('SPARSE NET PARAMETERS -- %s\n'%(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        fp.write('Processed layers: %s\n'%(str(sparsenet.PROCESSED_LAYERS)))
+        fp.write('Num training images: %d\n'%(net.layers['input-layer'].get_num_images()))
+        fp.write('Patches per image: %d\n'%(sparsenet.PATCHES_PER_IMAGE))
+        fp.write('Max iterations: %d\n'%(sparsenet.MAX_ITER))
+        fp.write('Tolerance: %s\n'%(str(sparsefiltering.TOLERANCE)))
+        fp.write('Num labels: %d\n'%(net.layers['input-layer']._num_labels))
+        fp.write('Input file: %s\n'%(net.layers['input-layer'].input_file))
+        fp.write('Net model: %s\n'%(NET_MODEL))
+        fp.write('Time elapsed: %d:%d\n'%((end-start)/60, (end-start)%60))
+        fp.write('\n\n')
+        fp.close()
 
-        filters = net.layers['conv3'].param()[0].data()
-        _ = visualize.show_multiple(filters.T)
-        pyplot.savefig('foo3.png')
 
-        filters = net.layers['conv4'].param()[0].data()
-        # make the right filter shape
-        filters = filters.T.reshape(192, 3, 3, 384)
-        filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(192*384, 5, 5)
-        _ = visualize.show_multiple(filters[:48*48], ncols=48)
-        pyplot.title('Forth layer filters, each filter is shown as a row of channels.')
-        pyplot.savefig('foo4.png')
-
-        filters = net.layers['conv5'].param()[0].data()
-        filters = filters.T.reshape(128, 3, 3, 384)
-        filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(128*384, 5, 5)
-        _ = visualize.show_multiple(filters[:48*48], ncols=48)
-        pyplot.title('Forth layer filters, each filter is shown as a row of channels.')
-        pyplot.savefig('foo4.png')
-
-        net.save('sparse-unsupervised', store_full=False)'''
-        '''_ = visualize.show_channels(feat)
-        pyplot.title('Output')
-        pyplot.show()
-        filters = net.layers['conv2'].param()[0].data()
-        filters = filters.T.reshape(256, 5, 5, 96)
-        filters = filters.swapaxes(2,3).swapaxes(1,2).reshape(256*96, 5, 5)
-        _ = visualize.show_multiple(filters[:96*96], ncols=96)
-        pyplot.show()'''
-        #net.save('sparse-unsupervised', store_full=False)
 
     if '--supervised' in sys.argv[1:] or '--all' in sys.argv[1:]: 
-        net.load_from('sparse-unsupervised')
+        net.load_from(NET_MODEL)
 
         print "###################################################################"
         print "  Calling solver"
@@ -486,21 +375,26 @@ if '--train' in sys.argv[1:]:
         solver.solve(net)
 
 else:
-    #net.load_from("/home/daniele/Downloads/tmp/sparse-unsupervised")
-    net.load_from("sparse-unsupervised")
-    fp = open('feat.mat', 'w')
+    file_name = net.layers['input-layer'].input_file.split('/')[-1].split('.')[0]
+    net.load_from("unsupervised.sparsenet")
+    fp = open('feat.%s'%(file_name), 'w')
+    fp1 = open('plibsvm.%s'%(file_name), 'w')
 
-    for i in range(200):
+    for i in range(net.layers['input-layer'].get_num_images()):
         print "\nprocessing image %d"%(i)
         top = [base.Blob(), base.Blob()]
-        #feat = net.predict(image=net.layers['input-layer'].forward([], top), output_blobs=['_sparse_fc6_flatten_out'])['_sparse_fc6_flatten_out']
-        feat = net.predict(output_blobs=['_sparse_fc6_flatten_out'])['_sparse_fc6_flatten_out']
-        #net.out_feat = net.predict(image=net.layers['input-layer'].forward([], top), 
-        #    output_blobs=['rnorm2_cudanet_out', 'conv3_neuron_cudanet_out', 'conv4_cudanet_out',
-        ##     'pool5_cudanet_out', '_sparse_fc6_flatten_out', 'rnorm1_cudanet_out'])
-        for val in feat[4]:
+        
+        feat = net.predict(output_blobs=['_sparse_fc6_flatten_out', 'labels'])
+        
+        fp1.write('%d '%(np.where(feat['labels'][0] == 1.)[0][0]))
+        cnt = 0
+        for val in feat['_sparse_fc6_flatten_out'][4]:
             fp.write("%f "%(val + 1e-6))
+            fp1.write("%d:%f "%(cnt, val))
+            cnt += 1
         fp.write('\n')
+        fp1.write('\n')
     fp.close()
+    fp1.close()
     
     tsne.main(mat='feat.mat')

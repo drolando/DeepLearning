@@ -14,12 +14,16 @@ import numpy as Math
 import pylab as Plot
 from mpl_toolkits.mplot3d import Axes3D
 
+MAX_ITER = 1000
+
 def Hbeta(D = Math.array([]), beta = 1.0):
     """Compute the perplexity and the P-row for a specific value of the precision of a Gaussian distribution."""
 
     # Compute P-row and corresponding perplexity
     P = Math.exp(-D.copy() * beta);
     sumP = sum(P);
+    if sumP == 0:
+        sumP = 0.1
     H = Math.log(sumP) + beta * Math.sum(D * P) / sumP;
     P = P / sumP;
     return H, P;
@@ -178,7 +182,7 @@ if __name__ == "__main__":
     X = X1/100
     #Y = tsne(X, 2, 50, 20.0);
     print "Running tsne"
-    Y = tsne(X, 2, perplexity=20.0, max_iter=400);
+    Y = tsne(X, 2, perplexity=20.0, max_iter=MAX_ITER);
     #labels = Math.array([Math.float64(1)]*386 + [Math.float64(2)]*1079 + [Math.float64(3)]*240 + [Math.float64(4)]*1226)
     #fig = Plot.figure()
     #ax = fig.add_subplot(111, projection='3d')
@@ -186,10 +190,12 @@ if __name__ == "__main__":
     #ax.scatter(Y[:,0][99:189], Y[:,1][99:189], Y[:,2][99:189], color='r', label="cat");
     #ax.scatter(Y[:,0][189:297], Y[:,1][189:297], Y[:,2][189:297], color='g', label="bird");
     labels = Math.array([Math.float64(1)]*386 + [Math.float64(2)]*1079 + [Math.float64(3)]*240 + [Math.float64(4)]*1226)
-    Plot.scatter(Y[:,0][0:100], Y[:,1][0:100], 20, color='b', label="dog", alpha=0.5);
-    Plot.scatter(Y[:,0][100:200], Y[:,1][100:200], 20, color='r', label="cat", alpha=0.5);
+    Plot.scatter(Y[:,0][0:185], Y[:,1][0:185], 20, color='b', label="bird", alpha=0.5);
+    Plot.scatter(Y[:,0][185:372], Y[:,1][185:372], 20, color='r', label="cat", alpha=0.5);
+    Plot.scatter(Y[:,0][372:540], Y[:,1][372:540], 20, color='g', label="dog", alpha=0.5);
     Plot.legend(loc=0, scatterpoints = 1)
     Plot.show()
+    Plot.savefig("distribution.png")
     
 #if __name__ == "__main__":
 #    main()
