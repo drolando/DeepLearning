@@ -334,6 +334,7 @@ if '--train' in sys.argv[1:]:
         if '--continue' in sys.argv[1:]:
             net.load_from(NET_MODEL)
 
+        print "num_images: ", net.layers['input-layer'].get_num_images()
         start = time.time()
         net.sparse_filtering()
         net.save(NET_MODEL, store_full=False)
@@ -377,24 +378,79 @@ if '--train' in sys.argv[1:]:
 else:
     file_name = net.layers['input-layer'].input_file.split('/')[-1].split('.')[0]
     net.load_from("unsupervised.sparsenet")
+    net.layers['fc8']._num_output = 2
     fp = open('feat.%s'%(file_name), 'w')
-    fp1 = open('plibsvm.%s'%(file_name), 'w')
+    fp_rnorm1 = open('plibsvm_1.%s'%(file_name), 'w')
+    fp_rnorm2 = open('plibsvm_2.%s'%(file_name), 'w')
+    fp_conv3 = open('plibsvm_3.%s'%(file_name), 'w')
+    fp_conv4 = open('plibsvm_4.%s'%(file_name), 'w')
+    fp_conv5 = open('plibsvm_5.%s'%(file_name), 'w')
+    fp_flatten = open('plibsvm_6.%s'%(file_name), 'w')
 
     for i in range(net.layers['input-layer'].get_num_images()):
         print "\nprocessing image %d"%(i)
         top = [base.Blob(), base.Blob()]
         
-        feat = net.predict(output_blobs=['_sparse_fc6_flatten_out', 'labels'])
+        feat = net.predict(output_blobs=['rnorm1_cudanet_out', 'rnorm2_cudanet_out', 'conv3_neuron_cudanet_out', 'conv4_neuron_cudanet_out', 'conv5_neuron_cudanet_out', '_sparse_fc6_flatten_out', 'labels',])
         
-        fp1.write('%d '%(np.where(feat['labels'][0] == 1.)[0][0]))
-        cnt = 0
-        for val in feat['_sparse_fc6_flatten_out'][4]:
-            fp.write("%f "%(val + 1e-6))
-            fp1.write("%d:%f "%(cnt, val))
+        label = np.where(feat['labels'][0] == 1.)[0][0]
+        fp_rnorm1.write('%d '%(label))
+        fp_rnorm2.write('%d '%(label))
+        fp_conv3.write('%d '%(label))
+        fp_conv4.write('%d '%(label))
+        fp_conv5.write('%d '%(label))
+        fp_flatten.write('%d '%(label))
+        
+        #first layer
+        cnt = 1
+        for val in feat['rnorm1_cudanet_out'].reshape((10, np.prod(feat['rnorm1_cudanet_out'].shape[1:])))[4]:
+            fp_rnorm1.write("%d:%f "%(cnt, val))
             cnt += 1
-        fp.write('\n')
-        fp1.write('\n')
-    fp.close()
-    fp1.close()
+        fp_rnorm1.write('\n')
+
+        #second layer
+        cnt = 1
+        for val in feat['rnorm2_cudanet_out'].reshape((10, np.prod(feat['rnorm2_cudanet_out'].shape[1:])))[4]:
+            fp_rnorm2.write("%d:%f "%(cnt, val))
+            cnt += 1
+        fp_rnorm2.write('\n')
     
-    tsne.main(mat='feat.mat')
+    
+        #third layer
+        cnt = 1
+        for val in feat['conv3_neuron_cudanet_out'].reshape((10, np.prod(feat['conv3_neuron_cudanet_out'].shape[1:])))[4]:
+            fp_conv3.write("%d:%f "%(cnt, val))
+            cnt += 1
+        fp_conv3.write('\n')
+
+        #forth layer
+        cnt = 1
+        for val in feat['conv4_neuron_cudanet_out'].reshape((10, np.prod(feat['conv4_neuron_cudanet_out'].shape[1:])))[4]:
+            fp_conv4.write("%d:%f "%(cnt, val))
+            cnt += 1
+        fp_conv4.write('\n')
+
+
+        #fifth layer
+        cnt = 1
+        for val in feat['conv5_neuron_cudanet_out'].reshape((10, np.prod(feat['conv5_neuron_cudanet_out'].shape[1:])))[4]:
+            fp_conv5.write("%d:%f "%(cnt, val))
+            cnt += 1
+        fp_conv5.write('\n')
+
+        #sixth layer
+        cnt = 1
+        for val in feat['_sparse_fc6_flatten_out'][4]:
+            fp_flatten.write("%d:%f "%(cnt, val))
+            fp.write("%f "%(val))
+            cnt += 1
+        fp_flatten.write('\n')
+        fp.write('\n')
+    fp.close()
+    fp_rnorm1.close()
+    fp_rnorm2.close()
+    fp_conv3.close()
+    fp_conv4.close()
+    fp_conv5.close()
+    fp_flatten.close()
+    

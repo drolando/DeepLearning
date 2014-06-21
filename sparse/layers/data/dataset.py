@@ -60,7 +60,8 @@ class ImageDataLayer(base.DataLayer):
         #print img_name
 
         #creates the labels vector
-        label = [1.0 if i == self._labels[img_name] - 1 else 0.0 for i in xrange(3)]
+        label = [1.0 if i == self._labels[img_name] else 0.0 for i in xrange(2)]
+        #print label
 
         labels = [label for i in xrange(10)]
         top_blob[1]._data[:] = labels
@@ -132,7 +133,7 @@ class ImageDataLayer(base.DataLayer):
         if self._image_files is None:
             self.load_input_file()
 
-        top[1].init_data((10, 3,), np.float32)
+        top[1].init_data((10, 2,), np.float32)
         #top    --> output
         #bottom --> should be empty
         if len(bottom) > 0:

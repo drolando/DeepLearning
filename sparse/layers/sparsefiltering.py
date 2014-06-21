@@ -65,7 +65,7 @@ def sparseFiltering(N,X, max_iter=200, disp=0, net=None, layer=None):
     w,g = objFun(optW)
     res = minimize(objFun, optW, method='L-BFGS-B', jac = True, tol=TOLERANCE, options = {'maxiter':max_iter, 'disp':disp})
     res = res.x.reshape(N,X.shape[0])
-    res = res / abs(res.max())
+    res = res / abs(res.max()/3)
     return res
 
 

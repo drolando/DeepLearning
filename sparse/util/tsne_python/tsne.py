@@ -10,6 +10,9 @@
 #  Created by Laurens van der Maaten on 20-12-08.
 #  Copyright (c) 2008 Tilburg University. All rights reserved.
 
+import matplotlib
+matplotlib.use('Agg')
+
 import numpy as Math
 import pylab as Plot
 from mpl_toolkits.mplot3d import Axes3D
@@ -175,7 +178,7 @@ def tsne(X = Math.array([]), no_dims = 2, PCA_dims = None, perplexity = 30.0, ma
 #def main(mat='feat.mat', labels='mnist2500_labels.txt'):
 if __name__ == "__main__":
     print "Loading file"
-    X1 = Math.loadtxt('feat.mat')
+    X1 = Math.loadtxt('feat.train')
     #labels = Math.loadtxt("400_14/imagenet_labels");
     #X = Math.array([[n/100 for n in x] for x in X1[0:1705]])
     print "Resizing values"
@@ -194,7 +197,7 @@ if __name__ == "__main__":
     Plot.scatter(Y[:,0][185:372], Y[:,1][185:372], 20, color='r', label="cat", alpha=0.5);
     Plot.scatter(Y[:,0][372:540], Y[:,1][372:540], 20, color='g', label="dog", alpha=0.5);
     Plot.legend(loc=0, scatterpoints = 1)
-    Plot.show()
+    #Plot.show()
     Plot.savefig("distribution.png")
     
 #if __name__ == "__main__":

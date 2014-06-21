@@ -10,8 +10,8 @@ import sys
 
 PATCHES_PER_IMAGE = 50
 MAX_ITER = 1500
-DISP = 10
-PROCESSED_LAYERS = [1]#, 1, 2, 3, 4, 5]
+DISP = 50
+PROCESSED_LAYERS = [0, 1, 2, 3, 4, 5]
 
 
 class SparseNet(base.Net):
@@ -56,7 +56,7 @@ class SparseNet(base.Net):
         else:
             ksize = layer._ksize
 
-        sys.stdout.write("loading patches: 0%")
+        sys.stdout.write("loading patches: 0%\r")
         # extracts patches from all images
         timer = Timer()
         for i in xrange(self.layers[self.input_layer].get_num_images()):
@@ -67,19 +67,19 @@ class SparseNet(base.Net):
                 input_channels = input_data.shape[-1]
 
             if kernel_size is None:
-                kernel_size = (ksize*ksize*input_channels, self.layers[self.input_layer]._num_images * PATCHES_PER_IMAGE)
+                kernel_size = (ksize*ksize*input_channels, self.layers[self.input_layer].get_num_images() * PATCHES_PER_IMAGE)
                 self.patches = np.zeros(kernel_size, dtype=np.float32)
 
             layer.extract_patches(input_data, self, PATCHES_PER_IMAGE)
-            sys.stdout.write('\r')
-            sys.stdout.write("loading patches: %d%%"%(i*100/self.layers[self.input_layer].get_num_images()))
+            sys.stdout.write("loading patches: %d%%\r"%(i*100/self.layers[self.input_layer].get_num_images()))
+            sys.stdout.flush()
         sys.stdout.write('\n')
         self.logger.info('Sparse Filtering: feed forward time %s.'%(timer.total()))
 
         if depth in [3, 4, 5]:
-            MAX_ITER = 500
+            MAX_ITER = 600
         else:
-            MAX_ITER = 1500
+            MAX_ITER = 1800
         # normalizes patches
         self.patches -= self.patches.mean(axis=0)
         print "patches matrix:: ", self.patches.shape
