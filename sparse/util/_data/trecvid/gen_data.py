@@ -1,6 +1,20 @@
-import sys
+import sys, os
 from os import listdir
 from random import shuffle
+
+if len(sys.argv) != 3:
+    print "Use: python %s num_of_train_images num_of_test_images\n"%(sys.argv[0])
+    sys.exit(1)
+
+if not os.path.isdir('./ann'):
+    print "Error: folder ann not found. Download the trecvid dataset.\n"
+    sys.exit(1)
+if not os.path.isdir('./train'):
+    print "Error: folder train not found. Download the trecvid dataset.\n"
+    sys.exit(1)
+if not os.path.isdir('./test'):
+    print "Error: folder test not found. Download the trecvid dataset.\n"
+    sys.exit(1)
 
 adults = {}
 file = open('./ann/Adult.ann', 'r')

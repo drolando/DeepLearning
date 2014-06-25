@@ -1,3 +1,5 @@
+# coding=utf-8
+# This 2 lines allow the network to be executed on a remote server without graphic interface.
 import matplotlib
 matplotlib.use('Agg')
 
@@ -13,12 +15,25 @@ from sparse.util.tsne_python import tsne
 
 NET_MODEL = 'unsupervised.sparsenet'
 
+# NETWORK DEFINITION
+# 
+# Here all the layers are created and added to the network. Each layer must have a univoque
+# name which is used to identify it.
+# 
+# To specify the input blobs of a layer you can use the parameter needs: it receives the names
+# of the required blobs.
+# Similarly the output blobs are set with the provides parameter; also in this case you should
+# put the names of the new blobs.
+#
+# Each layer must have the group parameter: it is user for the layer wise training. All the 
+# layers between a ConvolutionalLayer and the following one must be in the same group.
+#
+# All the layers must be added before calling net.finish().
 
 net = sparsenet.SparseNet()
 '''
-    NdarrayDataLayer -- takes a bunch of data and then emits them as Blobs.
-    sources - list of images (10, 227, 227, 3)
-    forward - puts these images in Blobs and sends them to the next layer
+    ImageDataLayer -- reads the input file, convert the images and then emits them as Blobs.
+    train - path to the default location of train.txt
 '''
 net.add_layer(
     ImageDataLayer(
@@ -326,10 +341,31 @@ net.add_layer(
 net.finish()
 visualize.draw_net_to_file(net, 'network.png')
 
+# MAIN FUNCTION
+#
+# PARAMETERS
+# --input: path to the train.txt file (default: ../../util/_data/train.txt)
+# --model: path to the model file (default: unsupervised.sparsenet)
+# --train --unsupervised: starts the unsupervised training phase. The trained network will be saved
+#                         in the model file.
+# --train --supervised: starts the supervised training phase. <<< NOT WORKING >>>
+# --train --all: executes both unsupervised and supervised trainings.
+#
+# OUTPUT
+# The unsupervised learning generates the network model and saves it in the NET_MODEL file. It creates
+# also a file 'net.params' which contains the basic informations about the training process.
+# The execution phase generates 12 files called plibsvm_$i.[train|val] which are the output of the 
+# corresponding layers. These files are used to train and test the libsvm library.
+# 
+
 if '--input' in sys.argv[1:]:
     net.layers['input-layer'].input_file = sys.argv[sys.argv.index('--input') + 1]
 
+if '--model' in sys.argv[1:]:
+    NET_MODEL = sys.argv[sys.argv.index('--model') + 1]
+
 if '--train' in sys.argv[1:]:
+    # TRAINING
     if '--unsupervised' in sys.argv[1:] or '--all' in sys.argv[1:]:
         if '--continue' in sys.argv[1:]:
             net.load_from(NET_MODEL)
@@ -376,8 +412,9 @@ if '--train' in sys.argv[1:]:
         solver.solve(net)
 
 else:
+    # EXECUTION
     file_name = net.layers['input-layer'].input_file.split('/')[-1].split('.')[0]
-    net.load_from("unsupervised.sparsenet")
+    net.load_from(NET_MODEL)
     net.layers['fc8']._num_output = 2
     fp = open('feat.%s'%(file_name), 'w')
     fp_rnorm1 = open('plibsvm_1.%s'%(file_name), 'w')
@@ -391,7 +428,8 @@ else:
         print "\nprocessing image %d"%(i)
         top = [base.Blob(), base.Blob()]
         
-        feat = net.predict(output_blobs=['rnorm1_cudanet_out', 'rnorm2_cudanet_out', 'conv3_neuron_cudanet_out', 'conv4_neuron_cudanet_out', 'conv5_neuron_cudanet_out', '_sparse_fc6_flatten_out', 'labels',])
+        feat = net.predict(output_blobs=['rnorm1_cudanet_out', 'rnorm2_cudanet_out', 'conv3_neuron_cudanet_out', 
+                    'conv4_neuron_cudanet_out', 'conv5_neuron_cudanet_out', '_sparse_fc6_flatten_out', 'labels',])
         
         label = np.where(feat['labels'][0] == 1.)[0][0]
         fp_rnorm1.write('%d '%(label))
