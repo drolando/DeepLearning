@@ -178,7 +178,7 @@ def tsne(X = Math.array([]), no_dims = 2, PCA_dims = None, perplexity = 30.0, ma
 #def main(mat='feat.mat', labels='mnist2500_labels.txt'):
 if __name__ == "__main__":
     print "Loading file"
-    X1 = Math.loadtxt('feat.train')
+    X1 = Math.loadtxt('feat.val')
     #labels = Math.loadtxt("400_14/imagenet_labels");
     #X = Math.array([[n/100 for n in x] for x in X1[0:1705]])
     print "Resizing values"
@@ -193,9 +193,8 @@ if __name__ == "__main__":
     #ax.scatter(Y[:,0][99:189], Y[:,1][99:189], Y[:,2][99:189], color='r', label="cat");
     #ax.scatter(Y[:,0][189:297], Y[:,1][189:297], Y[:,2][189:297], color='g', label="bird");
     labels = Math.array([Math.float64(1)]*386 + [Math.float64(2)]*1079 + [Math.float64(3)]*240 + [Math.float64(4)]*1226)
-    Plot.scatter(Y[:,0][0:185], Y[:,1][0:185], 20, color='b', label="bird", alpha=0.5);
-    Plot.scatter(Y[:,0][185:372], Y[:,1][185:372], 20, color='r', label="cat", alpha=0.5);
-    Plot.scatter(Y[:,0][372:540], Y[:,1][372:540], 20, color='g', label="dog", alpha=0.5);
+    Plot.scatter(Y[:,0][0:201], Y[:,1][0:201], 20, color='b', label="bird", alpha=0.5);
+    Plot.scatter(Y[:,0][201:402], Y[:,1][201:402], 20, color='r', label="cat", alpha=0.5);
     Plot.legend(loc=0, scatterpoints = 1)
     #Plot.show()
     Plot.savefig("distribution.png")
