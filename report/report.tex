@@ -1,0 +1,148 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Stylish Article
+% LaTeX Template
+% Version 1.0 (31/1/13)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass[fleqn,10pt]{SelfArx} % Document font size and equations flushed left
+
+\setlength{\columnsep}{0.55cm} % Distance between the two columns of text
+\setlength{\fboxrule}{0.75pt} % Width of the border around the abstract
+
+\definecolor{color1}{RGB}{0,0,90} % Color of the article title and sections
+\definecolor{color2}{RGB}{0,20,20} % Color of the boxes behind the abstract and headings
+
+\newlength{\tocsep} 
+\setlength\tocsep{1.5pc} % Sets the indentation of the sections in the table of contents
+\setcounter{tocdepth}{3} % Show only three levels in the table of contents section: sections, subsections and subsubsections
+
+\usepackage{lipsum} % Required to insert dummy text
+
+\usepackage{url}
+\usepackage{dcolumn}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{mathtools}
+\usepackage{listings}
+
+\definecolor{keywords}{HTML}{8A4A0B}
+
+\lstset{
+	%numbers=left, 
+	%numberstyle=\small, 
+	%numbersep=8pt, 
+	framexleftmargin=15pt,
+	language=bash,
+	breaklines=true,
+	basicstyle=\ttfamily\scriptsize,
+	emph={svm-scale,svm-train,svm-predict},
+	emphstyle=\textbf
+}
+
+\usepackage{hyperref}
+\hypersetup{
+    pdftitle={Semester project},
+    pdfauthor={Federico Giraud},
+    %pdfsubject={Your subject here},
+    %pdfkeywords={keyword1, keyword2},
+    bookmarksnumbered=true,     
+    bookmarksopen=true,         
+    bookmarksopenlevel=1,       
+    colorlinks=true,            
+    citecolor=black,
+    urlcolor=black,
+    linkcolor=black,
+    pdfstartview=Fit
+}
+\usepackage{hypcap}
+
+%----------------------------------------------------------------------------------------
+%	ARTICLE INFORMATION
+%----------------------------------------------------------------------------------------
+
+\JournalInfo{Semester project report} % Journal information
+\Archive{24/06/2014} % Additional notes (e.g. copyright, review/research article)
+ 
+\PaperTitle{Semester project report} % Article title
+
+\Authors{Federico Giraud \\ Gabriel Hochstrasser \\ Daniele Rolando \\
+\vspace{5pt}%
+{\small supervision by Prof. Bernard Merialdo\par}} % Authors
+\affiliation{\textit{federico.giraud@eurecom.fr \\ 
+gabriel.hochstrasser@eurecom.fr \\
+daniele.rolando@eurecom.fr } \\
+\textit{bernard.merialdo@eurecom.fr}} % Author affiliation
+
+\Keywords{Deep Learning, Imagenet, Information Retrieval, SVM, Average
+precision, Sparse Filtering} % Keywords
+\newcommand{\keywordname}{Keywords} % Defines the keywords heading name
+
+%----------------------------------------------------------------------------------------
+%	ABSTRACT
+%----------------------------------------------------------------------------------------
+
+\Abstract{In the first part we analyze the intermediate layers outputs of a deep
+convolutional neural network. The data extracted will be used to perform
+information retrieval measurements, comparing the performance at different
+layers. In the second part we perform the same measurements on a similar
+network, after training the network with sparse filtering. In the third part we
+propose a way to reduce the number of connections in the supervised layers by
+including the label into the training process.}
+
+%----------------------------------------------------------------------------------------
+
+
+\begin{document}
+
+\flushbottom % Makes all text pages the same height
+
+\maketitle % Print the title and abstract box
+
+\thispagestyle{empty} % Removes page numbering from the first page
+
+\onecolumn
+\tableofcontents % Print the contents section
+
+\thispagestyle{empty} % Removes page numbering from the first page
+
+\twocolumn
+%\newpage
+
+%----------------------------------------------------------------------------------------
+%	ARTICLE CONTENTS
+%----------------------------------------------------------------------------------------
+
+\setcounter{page}{1}
+
+\part{Deep network adaptation for information retrieval}
+
+\input{part_1.tex}
+
+\clearpage
+\part{Sparse filtering}
+
+\input{part_2.tex}
+
+\clearpage
+\part{Modification of the fully-connected layers}
+
+\input{part_3.tex}
+
+%----------------------------------------------------------------------------------------
+%	REFERENCE LIST
+%----------------------------------------------------------------------------------------
+
+\clearpage
+
+\bibliographystyle{plain}
+\bibliography{bibtex}
+
+\end{document}
+
+

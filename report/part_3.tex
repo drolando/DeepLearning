@@ -1,0 +1,109 @@
+\section{Introduction}
+
+In this section we are looking at the last three layers of the network. This part of the network takes the output from the unsupervised network and feeds it into three fully connected layers. After the last layer there is a classifier, which maps the output to the corresponding labels. \\
+Since the layers are fully connected, the training process is rather time consuming. In this section we show an approach to reduce the number neurons participating in the calculation. This is achieved by grouping similar layers together and include the group information into the training process. 
+
+\begin{figure}[hbtp]\centering
+\includegraphics[width=\linewidth]{images/netw_supervised}
+\caption{ImageNet network structure}
+\label{fig:net1_supervised}
+\end{figure}
+
+
+
+\subsection{Reducing the number of involved neurons }
+As described in the introduction, we to include some additional information about the label into the training process to reduce the number of connections in the last three layers. \\
+Including the labels into the process, produces kind of a chicken and egg problem. To solve this problem, we decided to group the labels. This reduces the problem to finding the corresponding group Id instead of labels. There are different ways of grouping the labels. This is described in the following paragraph in more details. \\
+However we still want to implement a fully connected layer. As a consequence we reduced the number of neurons involved per group. We implement a sliding windows approach to select only certain neurons. In our implementation, we choose to move the windows for each group with 1/4 of the windows size. \\
+The number of fully-connected neurons is reduce to the windows size.
+
+\subsection{Grouping of labels}
+How to group the labels is the choice of the designer of the network. The easiest way to group the labels is in alphabetical order. However this leads  to really heterogeneous groups. \\
+The better approach is to use clustering to assigns the labels to different groups, based on the similarity of the output from the unsupervised part. 
+In our simulation we clustered the input data by hand. This was possible, because we used a data set of characters in the alphabet, which follow a specific characteristic. This can be easily detected by humans. \\
+\textbf{Get Group Id for new Data} \\
+We propose two different approaches to determine the group Id for new data:
+\begin{itemize}\itemsep0.5pt
+    \item \textbf{Group selecting by neural network:} Since the Group Id's  can be treated as labels, we simply can reuse the existing code with a fixed offset for the sliding window. The advantage of this approach is, that we do not need to store an additional data structure. Instead we only reduce the number of available groups by one. 
+     \item \textbf{Determine group Id with clustering:} In the case the Group Id's were created by the help of a clustering algorithm, a new data sample, can be assigned by the clustering algorithm. 
+\end{itemize}
+ 
+
+
+\subsection{Implementation}
+
+There are two different specification of the modified fully-connected layers. One can be used on top of the unsupervised part of caffe/ImageNet and the other was created for an artificial character database by the university of Torino \cite{dset-sup}. 
+The two specification differ in the number of neurons used per layer. The table below  shows the total number of neurons and the neurons by a single group.\\
+The number of used neurons per layer is a tuning parameter and can be set by the designer of the network. 
+
+\begin{table}[htbp]
+\caption{Number of neurons for ImageNet and artificial character database implementation \\ (total , per group) }
+
+\centering
+\begin{tabular}{l|c|cc}
+       ~            & Input      & Layer 1,2       & Layer 3  \\
+    \midrule                                     
+    ImageNet        & 9096  & 4048 , 2048   & 1000 , 1000  \\
+    Test images     & 48   & 120 , 60       & 400 , 280  \\
+\end{tabular}
+\label{table:numberOfNeurons}
+\end{table}
+
+\subsection{Data set}
+Even though there exists an implementation which is running on top of Caffe, we run our calculation on the artificial character database \cite{dset-sup}. The reason for this decision, is the really slow convergence of our CPU implementation.The data set we use for the measurement describes ten capital letters of the English alphabet. For each class the data set contains 100 learning and 500 testing samples. The grouping for the given data set is listed in table \ref{table:Group_ID}
+
+\begin{table}[htbp]
+\caption{Data Set with Group Id}
+\centering
+\begin{tabular}{l|cc|c}
+       ~            & Group Id & Training Data & Test Data  \\
+    \midrule                                     
+    A     & 0 & 100  & 500  \\
+    C     & 30 & 100 & 500  \\
+    D     & 30 & 100 & 500  \\
+    E     & 45 & 100  & 500  \\
+    F     & 45 & 100 & 500  \\
+    G     & 15 & 100  & 500  \\
+    H     & 15 & 100 & 500  \\
+    L     & 30 & 100 & 500  \\
+    P     & 60 & 100 & 500  \\
+    R     & 60 & 100 & 500  \\
+
+\end{tabular}
+\label{table:Group_ID}
+\end{table}
+
+\subsection{Measurement}
+In table \ref{table:part3Results} you can see the results after training the network and testing the network with 500 testing samples per alphabetic character. This table hold for the assumption, that the group Id is computed correctly. \\
+
+\begin{table}[htbp]
+\caption{Training Results}
+\centering
+\begin{tabular}{l|c|cc|c}
+       ~            & Group Id & Mistakes & Total & Number of group members  \\
+    \midrule                                     
+    A     & 0 & 0  & 500 & 3  \\
+    C     & 15 & 14 & 500 & 2  \\
+    D     & 15 & 0 & 500 & 2  \\
+    E     & 0 & 12  & 500 & 3  \\
+    F     & 30 & 0 & 500 & 2  \\
+    G     & 0 & 2  & 500 & 3  \\
+    H     & 45 & 13 & 500 & 1 \\
+    L     & 30 & 0 & 500 & 2   \\
+    P     & 60 & 59 & 500 & 2  \\
+    R     & 60 & 6 & 500 & 2  \\
+
+\end{tabular}
+\label{table:part3Results}
+\end{table}
+
+\subsection{Conclusion}
+After working with the adopted version of the fully-connected layers, multiple drawbacks could be determined. A selection is listed below:
+
+\begin{itemize}\itemsep0.5pt
+    \item \textbf{Grouping process:} The process to assign each label to a group needs a clustering process. Finding an optimal solution is an NP-Problem.
+        \item \textbf{New tuning parameters:} The deep learning algorithm already suffer form many tuning parameters, which needs to be set accordingly to the problem. The new introduced parameters, increase this problem.  
+	\item \textbf{Sliding windows approach: } Since we use a sliding windows to determine which neuron are participation in the calculation, a wrong detected group Id leads to a wrong output.
+	\item \textbf{Less clear layer structure: } Because we need to determine from the output of the unsupervised part first the group Id and afterwards run the layers to classify the image, the network structure does not follow any more a straight-line relationship
+\end{itemize}
+As a conclusion we want to note, that the modified version of the fully-connected layers is a working solution. However the benefit for training process of deep learning networks has to be put into questions. 

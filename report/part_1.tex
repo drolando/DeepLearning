@@ -1,0 +1,818 @@
+\section{Introduction}
+
+Deep convolutional neural networks are the current state-of-the-art technique
+for image recognition. Their ability to recognize images relies on the deep
+architecture of the network, and especially on the first layers, dedicated to
+feature extraction. The first layers of the network (the ones after the data
+input layer) are trained in an unsupervised way and they build different levels
+of abstraction, starting with the raw input data and ending with a compact
+representation of the main features of the input image.
+
+That extracted features are then given as input to the last part of the network
+that acts as a normal classifier and learns how to associate the image features
+to the correct label.
+
+The purpose of this project is to analyze and classify the output of the
+different unsupervised layers and to compare their performance in terms of
+average precision.
+
+\section{The network}
+
+In this section we will describe the framework and the neural network we used to
+extract image features.
+
+\subsection{Caffe}
+
+Caffe \cite{Jia13caffe} is an open source framework for convolutional neural
+network algorithms, developed by the Berkeley Vision and Learning Center. Caffe
+provides the state-of-the-art deep learning algorithms and is implemented to
+run both on CPU and GPU.
+
+The network structure and parameters can be specified in a separate file, giving
+the possibility to easily train and use different convolutional neural networks
+without the need to write (almost) any line of code.
+
+\subsection{ImageNet network}
+
+The network we used is the ImageNet example network deployed with the Caffe
+framework. The network is an implementation of \cite{NIPS2012_4824}, a deep
+convolutional neural network that was able to significantly outperform all
+others techniques in the ILSVRC2012 challenge (in classification and
+localization tasks). The structure is presented in figure \ref{fig:net1}.
+
+\begin{figure}[hbtp]\centering
+\includegraphics[width=\linewidth]{images/netw}
+\caption{ImageNet network structure}
+\label{fig:net1}
+\end{figure}
+
+The output of each layer is specified in 3 dimensions: the first two are height
+and width, and depend on the size of the previous layer and the distance between
+the patches used for filters; the third dimension is the number of filters
+specified for that particular layer.
+
+\subsubsection{How it works}
+
+The input image is cropped and resized to fit in a 224x224x3 (RGB) input
+layer\footnote{The Caffe implementation uses a 227x227x3 input instead.}, as
+shown in figures \ref{fig:input1} and \ref{fig:input2}.
+
+\begin{figure}[h!]\centering
+    \includegraphics[width=\linewidth]{images/net/input_image}
+    \caption{Input image example, 500x290}
+    \label{fig:input1}
+\end{figure}
+
+\begin{figure}[h!]\centering
+    \includegraphics[width=0.7\linewidth]{images/net/input_layer}
+    \caption{Associated input layer, 227x227}
+    \label{fig:input2}
+\end{figure}
+
+The first layer applies filters to the image, extracting characteristics such as
+vertical lines, horizontal lines, color gradients and so on. We can see the
+learned filters of the first layer in figure \ref{fig:filters1}. 
+
+Partial output of the first layer is represented in \ref{fig:filters2}, where
+each box represents the output of one of the filters (black means neuron
+activation). The process is repeated until we reach the last two unsupervised
+layers, where the image features are represented in the most compact way (figure
+\ref{fig:output}).
+
+\begin{figure*}[hbtp]\centering
+\centering
+\begin{subfigure}[t]{.4\textwidth}
+    \centering
+    \includegraphics[width=.8\linewidth]{images/net/filters}
+    \caption{First layer filters}
+    \label{fig:filters1}
+\end{subfigure}%
+\begin{subfigure}[t]{.4\textwidth}
+    \centering
+    \includegraphics[width=.8\linewidth]{images/net/output_layer_1_n}
+    \caption{First layer output (one box per filter, first 36 filters)}
+    \label{fig:filters2}
+\end{subfigure}
+\caption{First layer filters and output.}
+\label{fig:filters3}
+\end{figure*}
+
+\begin{figure*}[hbtp]\centering
+\centering
+\begin{subfigure}[t]{.4\textwidth}
+    \centering
+    \includegraphics[width=.8\linewidth]{images/net/output_layer_2_n}
+    \caption{Fifth layer output (one box per filter, first 64 filters, no pooling)}
+    \label{fig:output1}
+\end{subfigure}%
+\begin{subfigure}[t]{.4\textwidth}
+    \centering
+    \includegraphics[width=.8\linewidth]{images/net/output_3_n}
+    \caption{Outout of one of the filters of layer five, without pooling}
+    \label{fig:output2}
+\end{subfigure}
+\begin{subfigure}[t]{.4\textwidth}
+    \centering
+    \includegraphics[width=.8\linewidth]{images/net/pool5_n}
+    \caption{Same filter after pooling}
+    \label{fig:output3}
+\end{subfigure}
+\caption{Last unsupervised layer output.}
+\label{fig:output}
+\end{figure*}
+
+In total, the network has:
+\begin{itemize}\itemsep0.5pt
+    \item 650,000 neurons
+    \item 60,000,000 parameters
+    \item 630,000,000 connections
+\end{itemize}
+and uses some advanced techniques such as ReLU\footnote{ReLU stands for
+``rectified linear unit``, a neuron with activation function $f(x) = \max(0,
+x)$.} neurons to speed up computation and dropout \cite{DBLP:journals/corr/abs-1207-0580}
+to reduce overfit.
+
+\subsubsection{Features separation}
+
+To show the network feature extraction capabilities in a graphic and intuitive
+way, we extracted the features of the last unsupervised layer and plotted in two
+dimensions using the t-SNE \cite{t-SNE} technique.
+
+\begin{figure}[hbtp]\centering
+\centering
+\begin{subfigure}{.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/t-sne/cat1}
+    \caption{Synset: cat}
+    \label{fig:synset_cat}
+    \vspace{10pt}
+\end{subfigure}
+\begin{subfigure}{.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/t-sne/dog1}
+    \caption{Synset: dog}
+    \label{fig:synset_dog}
+\end{subfigure}
+\caption{Example images from ImageNet.}
+\label{fig:synsets}
+\end{figure}
+
+We downloaded from ImageNet pictures relatives to the synsets cat, dog, bird and
+lamp (examples in figure \ref{fig:synsets}). The pictures where given to the network
+and the features of the last unsupervised layer extracted. After this
+transformation, each image is represented by a vector of 9216 values (being the
+size of the layer $6x6x256=9216$). 
+
+This output was then given to a modified t-SNE implementation to plot in 2D. The
+t-SNE technique reduces the dimensionality of the data while trying to respect
+the similarity between points. In this way groups of similar vectors in $N$
+dimensions will look as separated 2D groups of points, while different vectors
+will be represented by far away points.  
+
+The result for dog and cat images is presented in figure \ref{fig:tsne1}.
+Another experiment was conducted with four synsets: cat, dog, bird and lamp. The
+resulting plot is in figure \ref{fig:tsne2}.
+
+\begin{figure*}[hbtp]
+    \centering
+    \includegraphics[width=\linewidth]{images/t-sne/tsne1}
+    \caption{t-SNE representation of layer 5 output (2 synsets)}
+    \label{fig:tsne1}
+\end{figure*}
+\begin{figure*}[hbtp]
+    \centering
+    \includegraphics[width=\linewidth]{images/t-sne/tsne2}
+    \caption{t-SNE representation of layer 5 output (4 synsets)}
+    \label{fig:tsne2}
+\end{figure*}
+
+As we can see from figure \ref{fig:tsne1}, even if most of the cat and dog
+images are similar from a general point of view (most of them represent natural
+outdoor scenes), the network is able to get the important features of the images
+that allow to separate ones from the others. As shown by the picture, cat and
+dog images are clustered in two quite separate groups\footnote{Of course t-SNE,
+as any other dimensionality reduction technique, cannot perfectly represent the
+original data disposition.}. A similar result is shown by picture
+\ref{fig:tsne2}, this time with 4 synsets.
+
+\subsection{The dataset}
+
+The dataset that we are going to use is composed by frames extracted from
+different videos. Each annotation file contains a list of pictures that are
+known to contain or not contain the label. For example the following lines are
+extracted from the Adult.ann annotation file:
+\begin{verbatim}
+    shot9_19_RKF N
+    shot9_20_RKF P
+    shot9_21_RKF N
+    shot9_22_RKF P
+\end{verbatim}
+and they indicate that there are two images with an adult (those with $P$) and
+two where there is no adult ($N$). Each picture can be present in more than one
+annotation file and it can contain zero or more annotated objects. Some
+statistics about the dataset are shown in table \ref{table:dataset}.
+
+\begin{table}[htbp]
+\caption{Dataset statistics}
+\centering
+\begin{tabular}{lrr}
+    Train images      & 119,685 & 2.2 Gb \\
+    Test images       & 146,788 & 2.7 Gb \\
+    Total images      & 266,473 & 4.9 Gb \\
+    Labels            & 500 \\
+    Images with annot. & 120,660 & 50\% \\
+    Average annot.~per image   & 3.6 \\
+    No.~of labels combinations & 25,606 \\
+\end{tabular}
+\label{table:dataset}
+\end{table}
+
+The ratio between positive and negative images is different for each
+annotation. For example the annotation ``Adult'' has about $25\%$ of positive
+images, while the annotation ``Bus'' has only $0.1\%$. The complete statistics
+for some of the annotations are shown in table \ref{table:annotations}.
+
+\begin{table*}[htbp]
+\caption{Annotation examples}
+\centering
+\begin{tabular}{lcccccccc}
+    \phantom{abc} &  \phantom{abc} & \multicolumn{3}{c}{Positive} &
+    ~ & \multicolumn{3}{c}{Negative}\\
+    \cmidrule{3-5} \cmidrule{7-9}
+    Annotation       & Images & Total & Train & Test && Total & Train & Test \\
+    \midrule
+    Adult        & 50,762 & 10,798 & 8,160 & 2,638 && 39,964 & 37,384 & 2,580 \\
+    Airplane     & 71,171 & 372 & 171 & 201        && 70,799 & 65,647 & 5,152 \\
+    Bus          & 74,822 & 71 & 31 & 40           && 74,751 & 69,370 & 5,381 \\
+    Chair        & 21,576 & 755 & 557 & 198        && 20,821 & 17,321 & 3,500 \\
+    Gun          &  6,725 & 241 & 76 & 165         && 6,484  &    256 & 6,228 \\
+\end{tabular}
+\label{table:annotations}
+\end{table*}
+
+\subsection{libSVM}
+
+To classify the data coming from the intermediate layers we used the libSVM
+library, one of the most commonly used libraries for Support Vector Machines.
+Even if very small, the library supports many features such as:
+
+\begin{itemize}\itemsep0.5pt
+    \item Different SVM formulations
+    \item Various kernels (linear, polynomial, radial basis, sigmoid)
+    \item Multi-class classification
+    \item Cross validation
+    \item Probability estimates
+\end{itemize}
+
+With small modification to the source code is also possible to run the library
+in parallel to better exploit multi-core CPUs. A small test was performed to
+estimate the speedup given by the parallel version on a four core machine:
+
+\begin{verbatim}
+  $ time ./svm-train dataset
+  [...]
+  real    3m22.907s
+  user    3m21.584s
+  sys     0m0.536s
+
+  $ time ./parallel-svm-train dataset
+  [...]
+  real    1m24.002s
+  user    4m47.576s
+  sys     0m0.852s
+\end{verbatim}
+
+As we can see, the computation time went from 202 seconds to 84, giving an
+approximate speedup of 2.4 times.
+
+\subsection{Layers}
+
+The unsupervised part of the network is composed by five layers. In Caffe, the
+functionality of each layer is represented by sub-layers, that are mainly used
+for convolution, normalization and max pooling. A complete scheme of the
+unsupervised part is available in figures \ref{fig:net_str1} and
+\ref{fig:net_str2}. The end of each layer is indicated with a blue line. 
+
+\begin{figure}[h!]\centering
+    \includegraphics[width=0.8\linewidth]{images/net_str1}
+    \caption{Caffe network structure: layers 1 and 2}
+    \label{fig:net_str1}
+\end{figure}
+
+For example we can see from figure \ref{fig:net_str1} that each of the first
+two layers is composed by three sub-layers: convolution, max pooling and
+normalization. As specified in \cite{NIPS2012_4824}, only the first two layers and the fifth
+one have max-pooling. 
+
+\begin{figure}[h!]\centering
+    \includegraphics[width=0.8\linewidth]{images/net_str2}
+    \caption{Caffe network structure: layers 3, 4 and 5}
+    \label{fig:net_str2}
+\end{figure}
+
+For our measurement we decided to extract the data in 6 different points,
+indicated by red octagons. Their names and sizes are reported in table
+\ref{table:layers}.
+
+\begin{table}[htbp]
+\caption{Extracted sub-layers}
+\centering
+\begin{tabular}{c|ccc}
+    Name  & Layer & Dimensions & No.~of values \\
+    \midrule
+    norm1 & 1 & $96x27x27$ & 69,984\\
+    norm2 & 2 & $256x13x13$ & 43,264\\
+    conv3 & 3 & $384x13x13$ & 64,896\\
+    conv4 & 4 & $384x13x13$ & 64,896\\
+    conv5 & 5 & $256x13x13$ & 43,264\\
+    pool5 & 5 & $256x6x6$ & 9,216\\
+\end{tabular}
+\label{table:layers}
+\end{table}
+
+From the fifth layer we analyze both the data before and after max-pooling, in
+order to study the effect of max-pooling on the quality of the features
+representation.
+
+\section{SVM training}
+
+In this section we will explain how the SVM model is selected and measurements
+performed.
+
+\subsection{Data extraction} \label{subsec:svm_input}
+
+The Caffe library has a Python API that allows to run the network and look
+neuron weights and values. To extract the data we created a python program that
+given the layers we are interested in, one annotation file and the picture
+folder, it directly creates the dataset for libSVM. Example:
+
+\footnotesize\begin{verbatim}
+$ export LD_LIBRARY_PATH=/cuda/lib64:/lib/intel64
+
+$ ./create_dataset conv4 conv5 pool5 Adult.ann\
+  images/ datasets/
+Loading network...
+Network loaded in in 1.68s
+
+Images: 9192
+Extracting layers ['conv4', 'conv5', 'pool5']:
+  Layer conv4: 384, 13, 13 [64896 values]
+  Layer conv5: 256, 13, 13 [43264 values]
+  Layer pool5: 256, 6, 6 [9216 values]
+
+Starting image elaboration:
+  0%    Image: shot1001_20_RKF          0.13s
+ 10%    Image: shot2101_17_RKF          0.10s
+ [...]
+DONE
+
+$ ls datasets
+  datasets/conv4  datasets/conv5  datasets/pool5
+\end{verbatim}
+\normalsize
+
+As shown, the program reads the annotation file, looks for all the images
+belonging to that annotation in the specified images folder, and for each image
+it extracts all the requested layers.
+
+In the usual Caffe implementation the original image originates 10 sub-parts
+(center and four corners, mirrored and not) and each part is processed by the
+network, incrementing the computation time by a factor of 10. To speed up the
+computation, the network description file in Caffe was modified in order to
+process only the central part of the image. 
+
+It will create one dataset for each layer and each dataset will be structured
+according to the libSVM format:
+\footnotesize\begin{verbatim}
+$ cat datasets/pool5
+0 110:3.61 112:4.76 ... 9113:4.76 # shot1007_46_RKF
+1 1:5.01 12:0.98 ... 8999:4.06 # shot100_17_RKF
+0 45:2.34 47:2.05 ... 9110:12.33 # shot100_27_RKF
+[...]
+\end{verbatim}
+\normalsize
+
+Each line corresponds to one image. The first value is the label, while the
+others are the sparse representation of the feature vector, in the form
+\verb|<dimension_number>:<value>|. The last part is a comment with the name of
+the image.
+
+These datasets can be directly given to libSVM for cross validation or training.
+For testing, the same procedure has to be executed on test images in order to
+create the appropriate datasets.
+
+To reduce the size of the datasets there is a configurable parameter inside the
+program, called \verb|KEEP_RATIO|, that specifies the probability of an image to
+be processed (example values: $1$ all the images will be considered; $0.1$ only
+10\% of images will be extracted).
+
+To scale the data, libSVM already provides a program that analyze the range of
+each column in the file and scale it to a value $v \in [0, 1]$. Scaling has to
+be done with the same parameters both on training and test data: libSVM allows
+to store the scaling factors applied to one dataset, to be later applied to the
+scaling of another dataset\footnote{For more information:
+www.csie.ntu.edu.tw/\~cjlin/papers/guide/guide.pdf}.
+
+Data scaling can be a very expensive computation: to scale the norm1 layer data
+of the complete Adult training set it can take about 20 hours on a Intel i5
+3.2GHz machine.
+
+\subsection{Model selection}
+
+To select the best model three main decisions have to be made:
+
+\begin{enumerate}\itemsep0.5pt
+    \item Data scaling
+    \item Kernel (linear, polynomial, radial basis, sigmoid)
+    \begin{enumerate}\itemsep0.5pt
+        \item[2.1] Degree in case of polynomial
+    \end{enumerate}
+    \item Parameters
+\end{enumerate}
+
+First, a reduced dataset was created, to keep the computation time in an
+acceptable range. We selected one tenth of the Adult annotation and extracted
+the features from the pool5 layer (the one with the lowest number of dimensions).
+
+We proceeded performing a grid selection for each of the following models:
+\begin{itemize}\itemsep0.5pt
+    \item Linear kernel
+    \item Polynomial of degree 2
+    \item Polynomial of degree 3
+    \item Polynomial of degree 4
+    \item Radial basis
+    \item Sigmoid
+\end{itemize}
+each of them twice, both on scaled and unscaled data, for a total of 12 grid searches.
+
+For every grid search, the performance of the model is evaluated with cross
+validation, changing the parameters $C$ ($C = 2^{-5, -3 \ldots +15}$) and $\gamma$
+($\gamma = 2^{-15, -12 \ldots +3}$), for a total of $1,320$ tests.
+
+The computation was executed in parallel on 20 computers hosted in the EURECOM
+lab and it took approximately 60 hours to complete. 
+
+For every model, the scaled version of the dataset gave approximately 2\% better
+classification performance than the non scaled one. As said in the introduction,
+the network uses ReLU neurons in the unsupervised part, and they don't have an
+upper bound for the output signal. Reducing their output range to the interval
+$[0, 1]$ appears to improve the SVM classification score.
+
+In figure \ref{fig:grid}, page \pageref{fig:grid}, we report the graphical output
+given by the grid search on scaled dataset.
+
+\begin{figure*}[hbtp]\centering
+\centering
+\begin{subfigure}{.47\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/grid/1}
+    \caption{Linear}
+    \label{fig:grid1}
+\end{subfigure}\hfill%
+\begin{subfigure}{.47\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/grid/2}
+    \caption{Polynomial of degree 2}
+    \label{fig:grid2}
+\end{subfigure}
+\begin{subfigure}{.47\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/grid/3}
+    \caption{Polynomial of degree 3}
+    \label{fig:grid3}
+\end{subfigure}\hfill%
+\begin{subfigure}{.47\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/grid/4}
+    \caption{Polynomial of degree 4}
+    \label{fig:grid4}
+\end{subfigure}
+\begin{subfigure}{.47\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/grid/5}
+    \caption{Radial basis}
+    \label{fig:grid5}
+\end{subfigure}\hfill%
+\begin{subfigure}{.47\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/grid/6}
+    \caption{Sigmoid}
+    \label{fig:grid6}
+\end{subfigure}
+\caption{Grid search results}
+\label{fig:grid}
+\end{figure*}
+
+The top classification scores are:
+\begin{itemize}\itemsep0.5pt
+    \item $84.95\%$ - Polynomial of degree 3
+    \item $84.80\%$ - Radial basis
+    \item $84.78\%$ - Polynomial of degree 2
+    \item $84.30\%$ - Polynomial of degree 4
+    \item $84.18\%$ - Sigmoid
+    \item $81.97\%$ - Linear kernel
+\end{itemize}
+the associated $C$ and $\gamma$ values are reported in figure \ref{fig:grid}.
+
+\section{Measurements}
+
+In this section we perform average precision measurements with different
+datasets and for each of them we try the best two kernels given by grid search:
+polynomial of degree 3 and radial basis.
+
+\subsection{Balanced dataset - Adult}
+
+As first measurement, we decided to use the Adult annotation. To limit the
+calculation time, we used only 20\% of the training data available, while the
+test was performed on the complete test set. Statistics on the dataset are
+available in table \ref{table:ds1}.
+
+\begin{table}[htbp]
+\caption{Balanced dataset - Adult}
+\centering
+\begin{tabular}{l|cc|c}
+       ~            & Positive & Negative & Total  \\
+    \midrule                                     
+    Train images    & 1,673 & 7,518       & 9,919  \\
+    Test images     & 2,638 & 2,580       & 5,218  \\
+\end{tabular}
+\label{table:ds1}
+\end{table}
+
+As we can see, the amount of positives and negatives are in the same order of
+magnitude in this dataset. We will analyze a very unbalanced dataset in the next
+sections.
+
+\subsubsection{Radial basis kernel}
+
+We performed the first test using a radial basis kernel with $C=2$ and
+$\gamma=0.0078125=2^{-7}$ (values from grid search). We performed the training
+with libSMV option to get probability estimates. The termination tolerance is
+the default one of libSVM, $\epsilon=0.001$.
+
+Measures of dataset sizes and computation time (on an Intel Core i5-3470 CPU,
+3.20 GHz) are shown in table \ref{table:times1}, both for radial basis kernel
+and the polynomial one used in the next section. In this table we also show the
+average percentage of non zero values for each vector of the dataset.
+Considering the size of each layer (as reported on table \ref{table:layers},
+page \pageref{table:layers}), we can see that the number of non zero values is
+linearly correlated to the amount of time required by libSVM for the training.
+
+\begin{table}[htbp]
+\caption{Computation statistics}
+\centering
+\begin{tabular}{l|cccc}
+    Dataset & Size & Non zero values & RB & Polyn. \\
+    \midrule                                     
+    pool5  & 321 MB & $2.5\cdot10^{3} = 27.7\%$ &  0.9 h & 2.2 h \\
+    conv5  & 545 MB & $4.1\cdot10^{3} = 9.5\%$  &  2.5 h & 3.3 h \\
+    conv4  & 2.7 GB & $2.0\cdot10^{4} = 31.5\%$ & 19.8 h & 9.8 h \\
+    conv3  & 2.6 GB & $1.9\cdot10^{4} = 30.0\%$ & 16.8 h & 12.0 h \\
+    norm2  & 2.7 GB & $2.0\cdot10^{4} = 47.3\%$ & 19.1 h & 13.4 h\\
+    norm1  & 7.6 GB & $5.8\cdot10^{4} = 83.6\%$ & 25.5 h & 14.3 h\\
+    \midrule                                     
+    Total & 16.4 GB &  & 3.5 days & 2.3 days \\
+\end{tabular}
+\label{table:times1}
+\end{table}
+
+After, the prediction with probability estimates was executed on the test
+dataset of each layer, using a specific python program that directly extracts
+average precision given the probability prediction and the test dataset.
+The output probabilities were used to calculate the average precision with
+different number of retrieved documents. Results are shown in table
+\ref{table:meas1}.
+
+\begin{table*}[t!]
+\caption{Average precision on Adult - Radial basis}
+\centering
+\begin{tabular}{lcccccc}
+    Layer       & $k=100$ & $k=500$ & $k=1000$ & $k=1500$ &
+    $k=2000$ & $k=2500$ \\
+    \midrule
+    pool5        & 0.89 & 0.88 & 0.87 & 0.86 & 0.85 & 0.83 \\
+    conv5        & 0.95 & 0.91 & 0.89 & 0.89 & 0.86 & 0.83 \\
+    conv4        & 0.96 & 0.87 & 0.81 & 0.79 & 0.78 & 0.75 \\
+    conv3        & 0.95 & 0.72 & 0.70 & 0.67 & 0.61 & 0.57 \\
+    norm2        & 0.96 & 0.75 & 0.75 & 0.72 & 0.72 & 0.68 \\
+    norm1        & 0.88 & 0.73 & 0.70 & 0.55 & 0.46 & 0.46 \\
+\end{tabular}
+\label{table:meas1}
+\end{table*}
+
+As we can see from the values, the best overall result is obtained in the layer
+conv5, that is the last unsupervised layer, before performing pooling. As shown
+in table \ref{table:times1}, the pooling reduces the number of non zero values
+of each vector from 4,100 to 2,500, giving much faster training and prediction
+time, with very similar results.
+
+\subsubsection{Polynomial degree 3}
+
+The same computation was performed using a polynomial kernel of degree 3, with
+$C=32$ and $\gamma=0.0078125=2^{-7}$ (values from grid search). As shown by
+table \ref{table:times1}, the learning phase with this kernel takes only about
+$65\%$ of the time required by the radial basis kernel but it gives comparable
+results, see table \ref{table:meas2} on page \pageref{table:meas2}.  This time
+the layer conv5 gave worse results than the others, and even layers very close
+to the input data such as norm2 where able to give good results.
+
+These results may suggest that this class of objects (Adults) is simple enough
+to allow the SVM to give good probability estimations even without very abstract
+data. Notice that the radial basis kernel wasn't able to do that. 
+
+\begin{table*}[t!]
+\caption{Average precision on Adult - Polynomial degree 3}
+\centering
+\begin{tabular}{lcccccc}
+    Layer       & $k=100$ & $k=500$ & $k=1000$ & $k=1500$ &
+    $k=2000$ & $k=2500$ \\
+    \midrule
+    pool5        & 0.83 & 0.87 & 0.87 & 0.86 & 0.86 & 0.84 \\
+    conv5        & 0.82 & 0.80 & 0.81 & 0.81 & 0.81 & 0.81 \\
+    conv4        & 0.92 & 0.91 & 0.90 & 0.88 & 0.86 & 0.83 \\
+    conv3        & 0.93 & 0.90 & 0.89 & 0.87 & 0.85 & 0.83 \\
+    norm2        & 0.89 & 0.87 & 0.88 & 0.86 & 0.85 & 0.81 \\
+    norm1        & 0.87 & 0.80 & 0.80 & 0.79 & 0.78 & 0.76 \\
+\end{tabular}
+\label{table:meas2}
+\end{table*}
+
+\subsection{Unbalanced dataset - Flower}
+
+To test the same procedure on different data we decided to use the Flower
+annotation, where the number of positive pictures is one order of magnitude
+smaller than the negatives. Details in table \ref{table:ds2}.
+
+\begin{table}[htbp]
+\caption{Unbalanced dataset - Flower}
+\centering
+\begin{tabular}{l|cc|c}
+       ~            & Positive & Negative & Total  \\
+    \midrule                                     
+    Train images    & 359   & 4,013       & 4,372  \\
+    Test images     & 157   & 6,121       & 6,278  \\
+\end{tabular}
+\label{table:ds2}
+\end{table}
+
+To compensate for class unbalance, libSVM allows to selectively change the cost
+$C$ for each class, setting the weights $W_i$ such that for class $i$ the
+new cost is equal to $W_i \cdot C$. In this way we can specify a big cost for
+rare classes, giving $W_0 = 1$ and $W_1 = 10$, where 0 are negative samples and
+1 are positive ones.
+
+Apart from the class weights, the same kernels and parameters of the previous
+dataset were used on this dataset.
+
+\subsubsection{Radial basis kernel}
+
+In this test, the pool5 layer performed significantly better than all the
+others, even in comparison with conv5, suggesting that even though the data is
+reduced and simplified by pooling, the SVM can learn a better model on it.
+
+As in the Adult case, this kind of kernel performs much better with abstract
+data (higher layers). Details in table \ref{table:fl1}.
+
+\begin{table*}[t!]
+\caption{Average precision on Flower - Radial basis}
+\centering
+\begin{tabular}{lccccccc}
+    Layer       & $k=10$ & $k=50$ & $k=100$ & $k=500$ & $k=1000$ & $k=1500$ &
+    $k=2000$ \\
+    \midrule
+    pool5        & 1.00 & 0.76 & 0.48 & 0.46 & 0.48 & 0.49 & 0.49 \\
+    conv5        & 1.00 & 0.37 & 0.23 & 0.23 & 0.27 & 0.28 & 0.28 \\
+    conv4        & 1.00 & 0.25 & 0.14 & 0.12 & 0.14 & 0.16 & 0.17 \\
+    conv3        & 1.00 & 0.26 & 0.15 & 0.18 & 0.18 & 0.18 & 0.18 \\
+    norm2        & 1.00 & 0.24 & 0.13 & 0.14 & 0.15 & 0.15 & 0.15 \\
+    norm1        & 1.00 & 0.24 & 0.12 & 0.08 & 0.09 & 0.09 & 0.09 \\
+\end{tabular}
+\label{table:fl1}
+\end{table*}
+
+\subsubsection{Polynomial degree 3}
+
+Similarly to what happened with the Adult dataset, also in this test the
+polynomial kernel was able to give good probability estimation in the lower
+layers, performing much better in layer norm2 than conv5 for example. Again, this
+is in contrast to what happened with the radial basis kernel, showing that the
+type of kernel plays a central role for the performance. Details in table
+\ref{table:fl2}.
+
+As we can see comparing these values with the Adult ones, the results are worse.
+This could indicate that a reduced number of positive elements is not sufficient
+for the SVM to create a good model, even after setting the weights $W_i$. A
+small number of positive elements may not be sufficient to describe the object
+Flower and together with the complexity of the SVM, this could also cause
+overfit.
+
+\begin{table*}[t!]
+\caption{Average precision on Flower - Polynomial degree 3}
+\centering
+\begin{tabular}{lccccccc}
+    Layer       & $k=10$ & $k=50$ & $k=100$ & $k=500$ & $k=1000$ & $k=1500$ &
+    $k=2000$ \\
+    \midrule
+    pool5        & 0.27 & 0.46 & 0.36 & 0.34 & 0.38 & 0.39 & 0.39 \\
+    conv5        & 0.35 & 0.31 & 0.19 & 0.21 & 0.25 & 0.26 & 0.26 \\
+    conv4        & 1.00 & 0.51 & 0.32 & 0.34 & 0.37 & 0.38 & 0.38 \\
+    conv3        & 0.51 & 0.46 & 0.30 & 0.32 & 0.35 & 0.36 & 0.36 \\
+    norm2        & 0.51 & 0.47 & 0.35 & 0.38 & 0.40 & 0.40 & 0.41 \\
+    norm1        & 1.00 & 0.52 & 0.32 & 0.30 & 0.32 & 0.33 & 0.34 \\
+\end{tabular}
+\label{table:fl2}
+\end{table*}
+
+\subsection{Few positives dataset - Bus}
+
+As last test we tried to build a model based on just 31 positive elements. To do
+this we took the Bus label and created a small version of the dataset, keeping
+all the positive images and a small fraction of the negative images, that are
+much more numerous. More data in table \ref{table:ds3}.
+
+\begin{table}[htbp]
+\caption{Few positives dataset - Bus}
+\centering
+\begin{tabular}{l|cc|c}
+       ~            & Positive & Negative & Total  \\
+    \midrule                                     
+    Train images    & 31   & 3,456       & 3,487  \\
+    Test images     & 40   & 5,381       & 5,421  \\
+\end{tabular}
+\label{table:ds3}
+\end{table}
+
+Like in the previous unbalanced case, we used specific $C$ weights for the
+classes: $W_0 = 1$ and $W_1 = 100$. The results are reported in tables
+\ref{table:bus1} and \ref{table:bus2}. The values in this case are very low,
+even for small recall values. This implies that the positives images are not
+sufficient to construct a good model of the Bus object. This happens with both
+radial basis and polynomial kernel.
+
+\begin{table*}[t!]
+\caption{Average precision on Bus - Radial basis}
+\centering
+\begin{tabular}{lccccccc}
+    Layer       & $k=10$ & $k=50$ & $k=100$ & $k=500$ & $k=1000$ & $k=1500$ &
+    $k=2000$ \\
+    \midrule
+    pool5        & 0.000 & 0.003 & 0.010 & 0.019 & 0.022 & 0.024 & 0.025 \\
+    conv5        & 0.000 & 0.001 & 0.007 & 0.012 & 0.018 & 0.020 & 0.021 \\
+    conv4        & 0.000 & 0.000 & 0.003 & 0.009 & 0.014 & 0.017 & 0.018 \\
+    conv3        & 0.000 & 0.000 & 0.000 & 0.004 & 0.010 & 0.012 & 0.014 \\
+    norm2        & 0.000 & 0.000 & 0.000 & 0.005 & 0.009 & 0.012 & 0.014 \\
+    norm1        & 0.000 & 0.000 & 0.003 & 0.005 & 0.006 & 0.008 & 0.010 \\
+\end{tabular}
+\label{table:bus1}
+\end{table*}
+
+\begin{table*}[t!]
+\caption{Average precision on Bus - Polynomial degree 3}
+\centering
+\begin{tabular}{lccccccc}
+    Layer       & $k=10$ & $k=50$ & $k=100$ & $k=500$ & $k=1000$ & $k=1500$ &
+    $k=2000$ \\
+    \midrule
+    pool5        & 0.000 & 0.002 & 0.002 & 0.012 & 0.022 & 0.026 & 0.027 \\
+    conv5        & 0.000 & 0.000 & 0.001 & 0.009 & 0.016 & 0.020 & 0.021 \\
+    conv4        & 0.000 & 0.000 & 0.000 & 0.000 & 0.001 & 0.006 & 0.009 \\
+    conv3        & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.002 & 0.004 \\
+    norm2        & 0.000 & 0.000 & 0.000 & 0.000 & 0.002 & 0.003 & 0.007 \\
+    norm1        & 0.000 & 0.000 & 0.000 & 0.000 & 0.002 & 0.005 & 0.005 \\
+\end{tabular}
+\label{table:bus2}
+\end{table*}
+
+\section{Conclusions}
+
+The results show that the quality of recall in relation to the network layer is
+very dependent on the SVM kernel used. The radial basis kernel gives better
+results in the last layer of the network (conv5 and pool5), where the data is a
+more abstract representation of the input image. Instead the polynomial kernel
+can surprisingly give the same results at very different layers, like pool5 and
+norm2. Anyway, this can be very dependent on the nature of input image, since
+recognizing a simple shape can be easily done at the first layers, while a complex
+structured object may need more layers of abstraction.
+
+In general, the best layer is pool5, the last one of the unsupervised part of the
+original deep network. Even though pooling reduces the number of dimensions and
+number of non zero values in the input vectors, the quality of recall does not
+change. Instead, having a smaller number of values to deal with can help the
+SVM to generate a better model (and with less computations).
+
+We saw also that is very important to have a sufficient number of positive
+images in order to create a good model through the SVM.
+
+\subsection{Improvements}
+
+A lot of improvements can be done. For example, we used grid search based on
+classification scores, but the best parameters for classification may be
+sub-optimal for recall. A complete grid search can be performed, to find the
+best kernel and parameters, using cross validation to directly estimate the
+average precision on the validation set. This can lead to better results.
+
+Another improvement is to test different datasets based on complexity of the
+object, shape, color and so on, in order to better understand which kinds of
+object can be recognized using only raw data and which requires more abstract data. 
+
+
