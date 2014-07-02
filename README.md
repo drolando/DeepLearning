@@ -26,10 +26,10 @@ The zip file with the images of cats, birds, dogs and lamps taken from the Image
 
 All the input files (train.txt and val.txt) must be written with the following format:
 
-image_path        label
-dog/dog_001.png   0
-cat/cat_002.png   0
-bird/dird_001.png 0
+image_path        label  
+dog/dog_001.png   0  
+cat/cat_002.png   0  
+bird/dird_001.png 0  
 
 To generate these files for the ImageNet dataset you can use the 'gen_train.sh' and 'gen_val.sh' scripts available in the folder 'sparse/util/_data'.
 To generate the input files for the trecvid dataset you can use the 'gen_data.py' script in the folder 'sparse/util/_data/trecvid'.
