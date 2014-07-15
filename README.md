@@ -1,5 +1,7 @@
 DeepLearning
 ============
+[![Build Status](https://travis-ci.org/drolando/DeepLearning.svg?branch=master)](https://travis-ci.org/drolando/DeepLearning)
+[![Coverage Status](https://coveralls.io/repos/drolando/DeepLearning/badge.png)](https://coveralls.io/r/drolando/DeepLearning)
 Development of a deep convolutional neural network for image recognition using the sparse filtering algorithm.
 
 The research paper published by Stanford University can be found at: [http://cs.stanford.edu/~jngiam](http://cs.stanford.edu/~jngiam/papers/NgiamKohChenBhaskarNg2011.pdf)

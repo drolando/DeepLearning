@@ -3,9 +3,22 @@ python:
     - "2.6"
     - "2.7"
 
+before_install: sudo apt-get update
+
 install:
-    - "export CFLAGS=-Qunused-arguments"
-    - "export CPPFLAGS=-Qunused-arguments"
-    - "brew install graphviz"
-    - "pip install -r requirements.txt"
-    - "make all"
+    - sudo apt-get install libfreetype6-dev libblas-dev libgfortran3 build-essential gfortran python-all-dev liblapack-dev python-pydot python-mpi python-mpi4py
+    - sudo apt-get install python-numpy python-scipy python-numexpr python-matplotlib
+    - sudo apt-get install cython
+    - pip install -U six
+    - easy_install -U scikit-image
+    - pip install Pillow
+    - pip install coveralls
+    - cd sparse; make all; cd ..; exit 0;
+
+before_script:
+    - echo "before_script"
+    - export PYTHON_PATH=$PYTHON_PATH:$(pwd)
+
+script: coverage run test.py
+
+after_success: coveralls
