@@ -9,7 +9,7 @@ before_install:
     - sudo apt-get install -qq graphviz graphviz-dev
 
 install:
-	# get python version
+    # get python version
     - python --version &> ver
     - ver=$(cat ver | grep -o "[23]" | head -n1)
     # install anaconda-python
