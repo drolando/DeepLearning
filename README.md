@@ -1,7 +1,7 @@
 DeepLearning
 ============
 [![Build Status](https://travis-ci.org/drolando/DeepLearning.svg?branch=master)](https://travis-ci.org/drolando/DeepLearning)
-[![Coverage Status](https://coveralls.io/repos/drolando/DeepLearning/badge.png)](https://coveralls.io/r/drolando/DeepLearning)
+[![Coverage Status](https://coveralls.io/repos/drolando/DeepLearning/badge.png?branch=master)](https://coveralls.io/r/drolando/DeepLearning?branch=master)
 Development of a deep convolutional neural network for image recognition using the sparse filtering algorithm.
 
 The research paper published by Stanford University can be found at: [http://cs.stanford.edu/~jngiam](http://cs.stanford.edu/~jngiam/papers/NgiamKohChenBhaskarNg2011.pdf)
@@ -69,6 +69,7 @@ export CFLAGS=-Qunused-arguments
 export CPPFLAGS=-Qunused-arguments
 
 sudo -E pip install --upgrade numpy
+sudo -E pip install --upgrade gfortran
 sudo -E pip install --upgrade scipy
 sudo -E pip install --upgrade cython
 sudo -E pip install --upgrade scikit
