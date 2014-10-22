@@ -1,7 +1,7 @@
 language: python
 python:
+    - "2.6"
     - "2.7"
-    - "3.4"
 
 before_install:
     - sudo apt-get update
@@ -9,19 +9,6 @@ before_install:
     - sudo apt-get install -qq graphviz graphviz-dev
 
 install:
-    # get python version
-    - python --version &> ver
-    - ver=$(cat ver | grep -o "[23]" | head -n1)
-    # install anaconda-python
-    - "if [ $ver -eq 2 ]; then curl http://09c8d0b2229f813c1b93-c95ac804525aac4b6dba79b00b39d1d3.r79.cf1.rackcdn.com/Anaconda-2.0.1-Linux-x86_64.sh > ana.sh;
-        else curl http://repo.continuum.io/anaconda3/Anaconda3-2.0.1-Linux-x86_64.sh > ana.sh; fi"
-    - bash ana.sh -b
-    - "if [ $ver -eq 2 ]; then ANACONDA=$HOME/anaconda; else ANACONDA=$HOME/anaconda3; fi"
-    - export PATH=$ANACONDA/bin:$PATH
-    - unlink $ANACONDA/lib/libm.so
-    - ln -s /usr/lib/x86_64-linux-gnu/libm.so $ANACONDA/lib/libm.so
-    - unlink $ANACONDA/lib/libm.so.6
-    - ln -s /usr/lib/x86_64-linux-gnu/libm.so $ANACONDA/lib/libm.so.6
     # install dependencies
     - pip install -r requirements.txt
     - pip install coveralls
