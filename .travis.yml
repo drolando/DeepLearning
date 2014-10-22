@@ -1,16 +1,26 @@
 language: python
 python:
-    - "2.6"
     - "2.7"
 
 before_install:
     - sudo apt-get update
-    - sudo apt-get install -qq libfreetype6-dev libblas-dev libgfortran3 build-essential gfortran liblapack-dev
+    - sudo apt-get install -qq libfreetype6-dev libblas-dev libgfortran3 build-essential gfortran liblapack-dev git libopenmpi-dev
     - sudo apt-get install -qq graphviz graphviz-dev
 
 install:
+    # install anaconda-python
+    - curl http://09c8d0b2229f813c1b93-c95ac804525aac4b6dba79b00b39d1d3.r79.cf1.rackcdn.com/Anaconda-2.0.1-Linux-x86_64.sh > ana.sh
+    - bash ana.sh -b
+    - ANACONDA=$HOME/anaconda
+    - export PATH=$ANACONDA/bin:$PATH
+    - unlink $ANACONDA/lib/libm.so
+    - ln -s /usr/lib/x86_64-linux-gnu/libm.so $ANACONDA/lib/libm.so
+    - unlink $ANACONDA/lib/libm.so.6
+    - ln -s /usr/lib/x86_64-linux-gnu/libm.so $ANACONDA/lib/libm.so.6
     # install dependencies
     - pip install -r requirements.txt
+    - git clone https://bitbucket.org/mpi4py/mpi4py.git; cd mpi4py; pip install --upgrade .; cd ..;
+    - git clone https://github.com/nlhepler/pydot.git; cd pydot; python setup.py install; cd ..
     - pip install coveralls
     # compile cpp files
     - cd sparse; make all; cd ..;
